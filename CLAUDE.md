@@ -1,50 +1,37 @@
 # CLAUDE.md
 
-<!-- =========================================================
-  TEMPLATE NOTES — delete this entire block before using
-  - Replace all [placeholders] with actual project content
-  - Keep this file concise — Claude Code reads it FIRST every session
-  - Purpose: fast orientation, not exhaustive documentation
-  - Technical details → docs/ARCHITECTURE.md
-  - Business details → docs/OVERVIEW.md + domain docs + feature SPECs
-========================================================= -->
-
 ---
 
 ## Project
 
-**[Project Name]** — [1-2 sentence description: what it does, who it's for, what platform]
-
-<!-- Example:
-  **Zofi** — A GameFi DApp combining farming mechanics with a decentralized investment fund,
-  running on HyperEVM, targeting mainstream DeFi users.
--->
+**Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
 ---
 
 ## Tech Stack
 
-<!-- List technologies concisely by concern. No rationale here — put that in docs/ARCHITECTURE.md. -->
-
-| Concern       | Technology                                      |
-| ------------- | ----------------------------------------------- |
-| Framework     | [Next.js 15 / App Router]                       |
-| Language      | [TypeScript 5.x]                                |
-| Styling       | [Tailwind CSS v4]                               |
-| UI Components | [shadcn/ui]                                     |
-| Server State  | [TanStack Query v5]                             |
-| Client State  | [Zustand]                                       |
-| Validation    | [Zod]                                           |
-| Forms         | [React Hook Form]                               |
-| Auth          | [NextAuth / ...]                                |
-| Notifications | [Sonner]                                        |
-| HTTP Client   | [shared/services/api.ts — custom fetch wrapper] |
+| Concern       | Technology                                    |
+| ------------- | --------------------------------------------- |
+| Framework     | Next.js 16 / App Router                       |
+| Language      | TypeScript 5.x                                |
+| Styling       | Tailwind CSS v4                               |
+| UI Components | shadcn/ui                                     |
+| Server State  | TanStack Query v5                             |
+| Client State  | Zustand                                       |
+| Validation    | Zod v4                                        |
+| Forms         | React Hook Form v7 + @hookform/resolvers v5   |
+| Notifications | Sonner                                        |
+| HTTP Client   | `shared/services/api.ts` — custom fetch wrapper |
+| ORM           | Prisma                                        |
+| Database      | PostgreSQL via Supabase                       |
+| File Storage  | Supabase Storage (QR code image)              |
+| Slack         | Incoming Webhook + `chat.postMessage`         |
+| Scheduling    | Vercel Cron Jobs                              |
+| Package Manager | pnpm                                        |
 
 ---
 
 ## Commands
-
-<!-- List the scripts Claude Code needs to verify a build after implementing. -->
 
 ```bash
 pnpm dev          # Start dev server
@@ -52,27 +39,23 @@ pnpm build        # Production build
 pnpm type-check   # TypeScript check (no emit)
 pnpm lint         # ESLint
 pnpm lint:fix     # ESLint with auto-fix
-# pnpm test       # [if applicable]
-# pnpm e2e        # [if applicable — Playwright/Cypress]
+pnpm db:migrate   # Run Prisma migrations
+pnpm db:studio    # Open Prisma Studio
 ```
 
 ---
 
 ## Documentation Hierarchy
 
-<!-- This is the reading order Claude Code should follow for any task — big picture to detail. -->
-
 Read in this order for full context:
 
 1. **`docs/BRIEF.md`** — Raw requirements from owner (unedited, natural language)
-2. **`docs/OVERVIEW.md`** — Structured product overview: domain model, feature map, user roles
+2. **`docs/OVERVIEW.md`** — Structured product overview: domain model, feature map, API routes
 3. **`docs/domains/<domain>.md`** — Shared domain knowledge (read the domain relevant to your task)
+   - `docs/domains/employee.md` — Employee entity, role constants, identity (no auth)
+   - `docs/domains/menu.md` — MenuItem, MenuOfDay, MenuOfDayItem, lifecycle, timezone helpers
+   - `docs/domains/order.md` — Order, auto order, payment flow, cron
 4. **`src/features/<feature>/SPEC.md`** — Feature-specific detail: screens, API contracts, business rules
-
-<!-- Add or remove lines as domains are added to the project. Example:
-  3a. `docs/domains/finance.md`   — Finance domain: wallet, transaction, balance
-  3b. `docs/domains/identity.md`  — Identity domain: user profile, KYC
--->
 
 ---
 
@@ -84,8 +67,15 @@ Read in this order for full context:
 src/
 ├── app/                        → Routing only. Thin pages composing from features.
 │   ├── layout.tsx              → Root layout + providers
-│   ├── page.tsx                → Home / redirect
-│   └── (route-group)/          → Route groups (e.g. (auth)/, (dashboard)/)
+│   ├── page.tsx                → F1: Home
+│   ├── admin/
+│   │   ├── page.tsx            → F2: Admin dashboard
+│   │   ├── menu/page.tsx       → F3: Menu management
+│   │   ├── settings/page.tsx   → F4: App settings
+│   │   ├── employees/page.tsx  → F5: Employee management
+│   │   ├── report/page.tsx     → F6: Monthly report
+│   │   └── menu-items/page.tsx → F8: MenuItem management
+│   └── api/                    → All API route handlers
 │
 ├── features/                   → See "Feature Structure" below
 ├── domains/                    → See "Domain Structure" below
@@ -95,18 +85,17 @@ src/
 │   │   ├── atoms/              → Button, Input, Badge, Icon, Spinner...
 │   │   ├── molecules/          → FormField, SearchBar, NavItem, StatCard...
 │   │   ├── organisms/          → Header, Sidebar, DataTable, Modal...
-│   │   └── templates/          → AppShell, AuthLayout, DashboardLayout...
-│   ├── constants/              → App-wide constants (error codes, regex, config keys...)
+│   │   └── templates/          → AppShell, AdminLayout...
+│   ├── constants/              → App-wide constants + query-keys.ts
 │   ├── hooks/                  → Cross-feature hooks (useDebounce, useMediaQuery...)
-│   ├── lib/                    → Wrappers around external packages (api-client, cn, logger...)
+│   ├── lib/                    → Wrappers: cn, logger, prisma, slack, supabase
 │   ├── services/               → Base HTTP service (api.ts)
 │   ├── stores/                 → Global Zustand stores (if any)
-│   ├── utils/                  → Pure functions, no external package imports (format, parse, transform...)
+│   ├── utils/                  → Pure functions (format, parse, transform...)
 │   ├── types/                  → common.types.ts (shared across all)
-│   └── providers/              → Global contexts (1 file per context, composed in index.tsx)
-│       ├── auth-provider.tsx   → createContext + Provider + custom hook all in one file
-│       ├── theme-provider.tsx
+│   └── providers/              → Global contexts (composed in index.tsx)
 │       ├── query-provider.tsx
+│       ├── theme-provider.tsx
 │       └── index.tsx           → Composes all providers, imported by app/layout.tsx
 │
 └── config/
@@ -128,8 +117,7 @@ Each feature in `src/features/<feature>/` follows this layout:
 ├── stores/
 ├── types/
 ├── constants/                  [OPTIONAL] Feature-specific constants
-├── lib/                        → Feature-specific helpers, may import external packages
-├── <feature>-context.tsx       [OPTIONAL] Only create when this feature needs React Context
+├── lib/                        [OPTIONAL] Feature-specific helpers
 └── index.ts                    ★ Public API — only import from here
 ```
 
@@ -144,8 +132,8 @@ Each domain in `src/domains/<domain>/` follows this layout:
 ├── services/                   → Shared API functions across features in this domain
 ├── stores/
 ├── types/
-├── constants/                  [OPTIONAL] Domain-wide constants (status enums, business limits...)
-├── lib/
+├── constants/                  [OPTIONAL] Domain-wide constants
+├── lib/                        [OPTIONAL] Domain-specific helpers (e.g. date.ts for menu)
 └── index.ts                    ★ Public API — only import from here
 ```
 
@@ -167,16 +155,12 @@ app/ → features/ → domains/ → shared/
 
 ## Do NOT
 
-<!-- Common violations — Claude Code should re-read this section before committing.
-     If violations occur, prompt: "Re-read CLAUDE.md Do NOT section. Fix violations." -->
-
 **Architecture:**
 
 - ❌ Import internals from another feature — use `index.ts` only
 - ❌ Put business logic in `src/app/` pages
 - ❌ Let features import from each other outside of `index.ts`
 - ❌ Duplicate domain types or logic inside individual features
-<!-- barrel exports at shared/ root cause circular dependency issues in bundlers -->
 - ❌ Create barrel exports at the `shared/` root
 
 **Components:**
@@ -187,19 +171,20 @@ app/ → features/ → domains/ → shared/
 - ❌ Create a new shared component for something used in only one feature
 - ❌ Prop drilling beyond 2 levels — lift state to context or a state manager
 - ❌ Direct DOM manipulation (`document.querySelector`...) — use `ref` instead
+- ❌ Build custom atom components (Select, Checkbox, Dialog, Tabs, etc.) when a shadcn/ui component exists — always run `pnpm dlx shadcn@latest add <component>` first, then import from `@/components/ui/<component>`
 
 **TypeScript:**
 
 - ❌ Use `any` — use `unknown` + type guards
 - ❌ Use `Promise<any>` as a service return type — use `Promise<void>` or a typed interface
-- ❌ Use TypeScript `enum` — use `as const` + derived type + options array instead (use skill `const-map-pattern`)
+- ❌ Use TypeScript `enum` — use `as const` + derived type (see `docs/domains/employee.md` for example)
 - ❌ Use type assertion (`as SomeType`) to silence TypeScript — fix the type instead; only acceptable when narrowing from `unknown` after validation
 - ❌ Access `process.env` directly — use `config/env.ts`
 - ❌ Ignore error types from API responses
 
 **Services & Data:**
 
-- ❌ Use `fetch` or `axios` directly — always use the base service from `shared/services/api.ts`
+- ❌ Use `fetch` or `axios` directly on the client — always use the base service from `shared/services/api.ts`
 - ❌ Write inline query key arrays — always use the factory in `shared/constants/query-keys.ts`
 - ❌ Skip Zod validation on API responses — always use `.safeParse()` and check `result.success` before using `result.data`
 
@@ -211,11 +196,16 @@ app/ → features/ → domains/ → shared/
 - ❌ Leave `console.log` in committed code — use the logger or remove debug statements
 - ❌ Silently swallow errors in `catch` blocks — always at minimum `logger.error` them
 
+**Project-specific:**
+
+- ❌ Use raw `new Date()` for date boundary logic — use `getTodayUTC()` from `src/domains/menu/lib/date.ts`
+- ❌ Hard-delete employees or menu items — always soft delete (`isActive = false`)
+- ❌ Insert `AppConfig` — always upsert with `where: { id: "singleton" }`
+- ❌ Use `Promise.all` for fan-out Slack DMs — use `Promise.allSettled` so one failure doesn't block others
+
 ---
 
 ## How to Implement a Feature
-
-<!-- Keep this workflow intact — only update if the actual process changes. -->
 
 1. Read `docs/BRIEF.md` if you need to understand the original business intent
 2. Read `docs/OVERVIEW.md` for domain model and feature map
@@ -230,13 +220,9 @@ app/ → features/ → domains/ → shared/
 
 ## Key Conventions
 
-<!-- List the highest-impact conventions — the ones Claude Code most often gets wrong.
-     Full details → docs/ARCHITECTURE.md. No need to be exhaustive here. -->
-
 ### Code Style & Naming
 
 - **Prettier:** semicolons, single quotes, 2-space indent, 120 print width, `es5` trailing commas
-<!-- function declarations over arrow functions: enables hoisting (helpers can be defined after component), produces clearer TypeScript error messages -->
 - **Components:** function declarations (`export function Foo()`)
 - **Callbacks & handlers:** arrow functions (`const handleClick = () => {}`)
 - **`"use client"`:** required at the top of any file using hooks, events, or browser APIs
@@ -248,46 +234,43 @@ app/ → features/ → domains/ → shared/
 - **No magic numbers:** extract to named constants in `shared/constants/` or feature `constants/`
 - **No inline styles:** Tailwind classes only — no `style={{}}` unless absolutely unavoidable
 - **No unused imports:** enforced by ESLint
-- **Types:** use `unknown` + type guards instead of `any`; prefer `type` over `interface` — use `interface` only when declaration merging is explicitly needed (e.g. augmenting third-party library types)
+- **Types:** use `unknown` + type guards instead of `any`; prefer `type` over `interface` — use `interface` only when declaration merging is explicitly needed
 - **Env vars:** always via `config/env.ts` — never `process.env` directly
 - **Export types** from a feature via `index.ts` alongside components
+- **UI strings:** all labels, buttons, messages shown to users must be in **Vietnamese**
+- **Code & docs:** all code, variable names, comments, and documentation in **English**
 
 **Naming conventions:**
 
 | Type              | Convention                         | Example                                          |
 | ----------------- | ---------------------------------- | ------------------------------------------------ |
-| Files & folders   | kebab-case                         | `login-form.tsx`, `use-auth.ts`                  |
-| Components        | kebab-case file, PascalCase export | `login-form.tsx` → `export function LoginForm()` |
-| Hooks             | camelCase, `use` prefix            | `export function useAuth()`                      |
-| Types/Interfaces  | PascalCase                         | `AuthResponse`, `LoginPayload`                   |
-| Zustand stores    | camelCase, `use` prefix            | `export const useAuthStore = create(...)`        |
-| Service functions | camelCase, verb-first              | `getVaults()`, `createVault()`                   |
-| Zod schemas       | camelCase, `Schema` suffix         | `loginPayloadSchema`                             |
+| Files & folders   | kebab-case                         | `order-list.tsx`, `use-today-orders.ts`          |
+| Components        | kebab-case file, PascalCase export | `order-list.tsx` → `export function OrderList()` |
+| Hooks             | camelCase, `use` prefix            | `export function useTodayOrders()`               |
+| Types/Interfaces  | PascalCase                         | `MenuOfDayResponse`, `OrderItem`                 |
+| Zustand stores    | camelCase, `use` prefix            | `export const useHomeStore = create(...)`        |
+| Service functions | camelCase, verb-first              | `getTodayMenu()`, `createOrder()`                |
+| Zod schemas       | camelCase, `Schema` suffix         | `createOrderSchema`, `publishMenuSchema`         |
 
 **File naming by folder:**
 
-| Folder                  | Pattern                      | Example                                    |
-| ----------------------- | ---------------------------- | ------------------------------------------ |
-| `services/`             | `[resource].service.ts`      | `vault.service.ts`, `user.service.ts`      |
-| `types/`                | `[resource].type.ts`         | `vault.type.ts`, `user.type.ts`            |
-| `hooks/`                | `use-[action]-[resource].ts` | `use-get-vaults.ts`, `use-create-vault.ts` |
-| `components/`           | `[feature]-[role].tsx`       | `vault-card.tsx`, `user-table.tsx`         |
-| `stores/`               | `[resource].store.ts`        | `vault.store.ts`, `user.store.ts`          |
-| `<feature>-context.tsx` | `[resource]-context.tsx`     | `vault-context.tsx`, `auth-context.tsx`    |
+| Folder      | Pattern                      | Example                                          |
+| ----------- | ---------------------------- | ------------------------------------------------ |
+| `services/` | `[resource].service.ts`      | `order.service.ts`, `menu.service.ts`            |
+| `types/`    | `[resource].type.ts`         | `order.type.ts`, `menu.type.ts`                  |
+| `hooks/`    | `use-[action]-[resource].ts` | `use-today-orders.ts`, `use-publish-menu.ts`     |
+| `components/` | `[feature]-[role].tsx`     | `order-list.tsx`, `menu-item-row.tsx`            |
+| `stores/`   | `[resource].store.ts`        | `home.store.ts`, `menu-draft.store.ts`           |
 
 **Schemas vs Types:**
 
 - `types/` owns interfaces and types **not** derived from Zod (API response shapes, prop types, union types)
 - Zod schemas: define in `types/[resource].type.ts`, co-located with the derived `z.infer` type
-- If a feature has 3+ schemas: extract to a dedicated `schemas/` folder with `[resource].schema.ts` naming
-<!-- manually redefining a type that already exists as z.infer creates two sources of truth that will inevitably drift -->
 - Never duplicate — if a type is derived from Zod, use `z.infer<typeof schema>` only, do not redefine manually
-- Same conventions apply inside `shared/` and `domains/`
-
-<!-- TypeScript rules merged into Code Style -->
 
 ### Components
 
+- Always prefer shadcn/ui components over raw HTML elements for any interactive UI element. Before building a UI component, check shadcn/ui first. If it exists, install it with `pnpm dlx shadcn@latest add <component-name>`. shadcn/ui components live in `src/components/ui/` — always import from there.
 - Component > 200 lines → extract sub-components
 - Generic UI with no business logic → `shared/components/`
 - UI tied to domain data, used by 2+ features → `domains/<domain>/components/`
@@ -301,8 +284,7 @@ shared/components/
 ├── atoms/      Smallest unit, wraps 1 HTML element (Button, Input, Badge, Icon, Spinner, Avatar)
 ├── molecules/  Groups of atoms (FormField, SearchBar, NavItem, StatCard, DropdownMenu, Toast)
 ├── organisms/  Complex sections (Header, Sidebar, DataTable, Modal, Form)
-└── templates/  Page-level layouts — slots for content, no business data
-                (AppShell, AuthLayout, DashboardLayout)
+└── templates/  Page-level layouts — slots for content, no business data (AppShell, AdminLayout)
 ```
 
 Dependency direction: `templates → organisms → molecules → atoms` (never reverse)
@@ -317,27 +299,19 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 - Always pass `aria-label` to icon-only buttons and interactive elements without visible text
 - Use `cn()` from `@/shared/lib/cn` to merge Tailwind classes — never string concatenation
 
-**Context pattern** — always co-locate context object, provider, and consumer hook in one file:
-
-- Always initialize context with `null`, never with `{} as T` or a fake default value
-- Always throw a descriptive error in the consumer hook when context is `null`
-- Never call `useContext` directly outside of the dedicated consumer hook
-
-→ Use skill `context-pattern` for full boilerplate
-
 ### State Management
 
 - Server state (from API) → TanStack Query
 - Client state (UI state) → Zustand or `useState`
 - Form state → React Hook Form + Zod resolver
+- `selectedEmployeeId` persisted in `localStorage` — managed by `useHomeStore` in `features/home`
+- Pre-publish menu draft (item list before publish) — managed by `useMenuDraftStore` in `features/menu-management`
 
 **Zustand store rules:**
 
 - Always named export (`export const use...`) — no default exports
-<!-- extracting initialState ensures reset() always returns to the exact same state without duplicating values -->
 - Extract `initialState` as a const — makes `reset()` reliable and DRY
-<!-- persist adds localStorage coupling and rehydration complexity — most UI state does not need to survive refresh -->
-- Add `persist` middleware only when state must survive page refresh — never by default
+- Add `persist` middleware only when state must survive page refresh (`useHomeStore` is the only current case)
 - Keep stores flat — avoid deeply nested state shapes
 - Actions (`set`) live inside the store — never mutate state from outside
 
@@ -345,38 +319,30 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 
 ### API & Data Fetching
 
-- **Client-side requests:** Axios instance (`apiClient`) from `shared/services/api.ts` — interceptors inject auth token, normalize errors, and unwrap `res.data` globally
-- **Server-side requests (Next.js only):** native `fetch` — preserves Next.js cache extensions (`cache`, `next.revalidate`)
-<!-- safeParse returns {success, data, error} instead of throwing — validation errors are handled explicitly at the service level, not accidentally swallowed by a caller's catch block -->
-- **Feature services:** `features/<feature>/services/` — always validate responses with Zod `safeParse()` (Zod v3+), never `.parse()`
+- **Client-side requests:** base service from `shared/services/api.ts`
+- **Server-side requests (API routes):** Prisma directly — no HTTP client needed
+- **Feature services:** `features/<feature>/services/` — always validate responses with Zod `safeParse()`, never `.parse()`
 - **Domain services:** `domains/<domain>/services/` — shared API functions reused across multiple features
-- **Queries:** wrap `useQuery` with the project's auth-aware query hook — only enable queries when auth is ready
 - **Mutations:** call `queryClient.invalidateQueries({ queryKey: queryKeys.x.all })` after every mutation
 - **Query keys:** use the centralized factory in `shared/constants/query-keys.ts` — never write inline string arrays
-- **204 No Content:** handle per-service — do not rely on unwrapped `res.data` for empty responses
+- **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s (`refetchInterval: 30_000`)
 
-→ Use skill `service-pattern` for Axios instance boilerplate, safeParse pattern, query key factory, and mutation boilerplate
+→ Use skill `service-pattern` for base service boilerplate, safeParse pattern, and mutation boilerplate
 
 ### Form Handling
 
 - Stack: `react-hook-form` v7 + `zod` v4 + `@hookform/resolvers` v5
-<!-- @hookform/resolvers <v5 + Zod v4: resolver throws instead of returning field errors, making form.formState.errors always empty -->
-- **Note:** `@hookform/resolvers` < v5 is incompatible with Zod v4
+- `@hookform/resolvers` < v5 is incompatible with Zod v4 — always use v5+
 - Always define Zod schema first → derive type with `z.infer<typeof schema>` → pass `zodResolver(schema)` to `useForm`
 - **Field errors:** rendered inline below each field via `formState.errors`
-- **Submit errors:** (e.g. API error after submit) displayed via toast, not injected into form state
-
-```ts
-const schema = z.object({ email: z.string().email() });
-type FormValues = z.infer<typeof schema>;
-const form = useForm<FormValues>({ resolver: zodResolver(schema) });
-```
+- **Submit errors:** displayed via Sonner toast, not injected into form state
 
 ### Error Handling & Logging
 
 - API errors → typed error response, displayed via Sonner toast
 - Unexpected errors → error boundary component or fallback UI
 - In `catch` blocks: always use `logger.error` — never silently swallow errors
+- Slack errors in publish flow → log with `logger.error` but do NOT fail the publish request
 
 **Logger** (`shared/lib/logger.ts`):
 
@@ -384,10 +350,18 @@ const form = useForm<FormValues>({ resolver: zodResolver(schema) });
 - `logger.warn` — always visible
 - `logger.error` — always visible
 
-If `logger.ts` does not exist yet: fall back to `console.warn` / `console.error` — never commit bare `console.log`.
+### Prisma
 
-<!-- Add project-specific conventions below. Examples:
-     Web3/wallet patterns, i18n conventions, animation rules... -->
+- Always import from `@/shared/lib/prisma` — never instantiate `PrismaClient` directly in features
+- `AppConfig`: always `upsert` with `where: { id: "singleton" }` — never `create`
+- Soft delete: always set `isActive = false` — never `delete` employees or menu items
+- Timezone: always use `getTodayUTC()` from `src/domains/menu/lib/date.ts` for date boundaries
+
+### Price & Date Formatting
+
+- **Prices:** display as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`) — store as integer VND
+- **Dates:** display as `dd/MM/yyyy` (e.g. `04/04/2026`)
+- **Time:** display as `HH:mm` (e.g. `13:30`)
 
 ---
 
@@ -408,34 +382,35 @@ Format: `<type>(<scope>): <description>`
 
 **Rules:**
 
-- `scope`: optional, kebab-case feature or module name (`auth`, `deposit`, `farm`)
+- `scope`: optional, kebab-case feature or module name (`home`, `menu`, `order`, `employee`)
 - `description`: imperative mood, lowercase, no trailing period ("add" not "added")
-- Breaking change: append `!` after type — `feat!: migrate to new auth flow`
+- Breaking change: append `!` after type — `feat!: change publish API contract`
 
 ```bash
-feat(auth): add Privy wallet connection
-fix(deposit): handle insufficient balance error
-refactor(farm): extract season calculation to service
-chore: update shadcn/ui to v2.1
+feat(home): add order form with optimistic UI
+fix(menu): handle empty prefill when no previous menu exists
+refactor(order): extract auto order logic to domain service
+chore: update prisma to v6
 ```
 
 ---
 
 ## Feature Map (Quick Reference)
 
-<!-- Full overview → docs/OVERVIEW.md. Update this table whenever a feature is added. -->
-
-| #   | Feature     | Route      | Domain   | Status      |
-| --- | ----------- | ---------- | -------- | ----------- |
-| 1   | [Feature A] | `/route-a` | [domain] | Planned     |
-| 2   | [Feature B] | `/route-b` | [domain] | In Progress |
-| 3   | [Feature C] | `/route-c` | —        | Done        |
+| #  | Feature              | Route                | Domain            | Status  |
+| -- | -------------------- | -------------------- | ----------------- | ------- |
+| F1 | Home                 | `/`                  | employee, order   | Planned |
+| F2 | Admin Dashboard      | `/admin`             | order, menu       | Planned |
+| F3 | Menu Management      | `/admin/menu`        | menu, order       | Planned |
+| F4 | App Settings         | `/admin/settings`    | —                 | Planned |
+| F5 | Employee Management  | `/admin/employees`   | employee          | Planned |
+| F6 | Monthly Report       | `/admin/report`      | order, employee   | Planned |
+| F7 | Slack Notifications  | events + cron        | order, menu       | Planned |
+| F8 | MenuItem Management  | `/admin/menu-items`  | menu              | Planned |
 
 ---
 
 ## Skills
-
-Skills are best-practice playbooks Claude Code loads on demand — not read every session.
 
 ### Project skills (available in `.claude/skills/`)
 
@@ -448,11 +423,7 @@ Skills are best-practice playbooks Claude Code loads on demand — not read ever
 | `form-pattern`      | Creating a form with React Hook Form + Zod           |
 | `error-handling`    | Implementing error boundary, toast, or logger        |
 
-<!-- form-pattern and error-handling skills are pending creation — see docs/SKILLS.md -->
-
 ### Community skills
-
-<!-- Installation instructions → docs/SKILLS.md -->
 
 | Skill                         | Use when                                                                             |
 | ----------------------------- | ------------------------------------------------------------------------------------ |
@@ -460,24 +431,13 @@ Skills are best-practice playbooks Claude Code loads on demand — not read ever
 | `vercel-composition-patterns` | Designing shared components                                                          |
 | `next-best-practices`         | Next.js file conventions, RSC boundaries, async APIs, metadata, image/font, bundling |
 
-### Note on barrel imports
-
-`vercel-react-best-practices` includes a rule against barrel imports. In this template:
-
-- `features/*/index.ts` and `domains/*/index.ts` are **public API boundaries** — not barrel anti-patterns
-- Anti-patterns to avoid: re-exporting everything from `shared/` root, or importing directly from icon/component library index files
+`features/*/index.ts` and `domains/*/index.ts` are **public API boundaries** — not barrel anti-patterns. Anti-patterns to avoid: re-exporting everything from `shared/` root, or importing icon/component libraries through their index.
 
 ---
 
 ## Session Workflow Tips
 
-<!-- For Claude Code — self-correction rules to apply within a session: -->
-
 - **Lost / off track:** Stop → re-read CLAUDE.md, especially "Dependency Rules" and "Do NOT"
 - **Need shared code:** Check `domains/*/index.ts` and `shared/` before writing anything new
-
-<!-- For developers — how to start each type of session (move this to README.md):
-- New feature:       read CLAUDE.md + domain doc + SPEC.md → implement types first, components last
-- Bug fix:           read the feature SPEC.md for context → fix → verify no convention violations
-- Cross-feature:     read SPEC.md of ALL involved features → communicate only via index.ts
--->
+- **Timezone bug:** always trace back to `getTodayUTC()` — never trust raw `new Date()`
+- **Slack not sending:** check `slackId` is set, log error but do not fail the parent operation

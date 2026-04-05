@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'App',
-  description: 'App description',
+  title: 'Cơm trưa Reddotlabs',
+  description: 'Đặt cơm trưa văn phòng Reddotlabs',
 };
 
 export default function RootLayout({

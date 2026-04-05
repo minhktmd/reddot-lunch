@@ -1,0 +1,269 @@
+# OVERVIEW.md
+
+> Structured product overview — the technical map of the entire system.
+> Derived from `docs/BRIEF.md`. Read this before any domain doc or feature SPEC.
+> Implementation details (schema, code, business rules) → `docs/domains/*.md`.
+> Feature detail → `src/features/*/SPEC.md`.
+
+---
+
+## Product Summary
+
+**Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
+
+**Platform:** Web (mobile-first). Hosted on Vercel + Supabase (free tier).
+
+---
+
+## User Roles
+
+| Role | How identified | Access |
+|---|---|---|
+| **Member** | Selects name from dropdown on first visit | `/` only |
+| **Admin** | `Employee.role = "admin"` | `/` + all `/admin/*` routes |
+
+- No login, no session, no tokens — all routes are publicly accessible
+- `role` is used only for Slack notification routing, not for access control
+- Multiple admins are allowed
+
+---
+
+## Domain Model
+
+### Entities
+
+```
+Employee        — a person in the office; name, email?, slackId?, role, autoOrder flag
+MenuItem        — reusable dish in the catalog (e.g. "Cơm gà Hội An")
+MenuOfDay       — the daily menu created by admin; lifecycle: draft → published → locked
+MenuOfDayItem   — a meal portion on a specific day (MenuItem + price + sideDishes for that day)
+Order           — one meal portion ordered by one employee on one day
+AppConfig       — singleton row; holds global settings (QR code URL)
+```
+
+### Relationships
+
+```
+Employee      ──< Order              one employee → many orders across days
+MenuItem      ──< MenuOfDayItem      one dish → appears in many daily menus
+MenuOfDay     ──< MenuOfDayItem      one daily menu → many meal portions
+MenuOfDay     ──< Order              one daily menu → many orders
+MenuOfDayItem ──< Order              one meal portion → chosen by many orders
+```
+
+### Key constraints
+
+- One employee can have **multiple Orders on the same day** (different meal types) — no unique constraint on `(menuOfDayId, employeeId)`
+- Each Order has `quantity >= 1`
+- Payment state lives directly on `Order` (`isPaid`, `paidAt`) — no separate Payment entity
+- `AppConfig` always has exactly one row (`id = "singleton"`) — always upsert, never insert
+- Schema → `docs/domains/*.md`
+
+---
+
+## MenuOfDay Lifecycle
+
+```
+DRAFT ──→ PUBLISHED ──→ LOCKED
+               ↑____________↓  (admin can unlock)
+```
+
+| State | isPublished | isLocked | Employee can order? | Admin can edit items? |
+|---|---|---|---|---|
+| Draft | false | false | No | Yes |
+| Published | true | false | Yes | Yes |
+| Locked | true | true | No | No |
+
+Full transition logic → `docs/domains/menu.md`
+
+---
+
+## Key Business Rules (summary)
+
+- **Auto order** — when admin publishes menu, employees with `autoOrder = true` and no existing order for today get a random dish ordered for them automatically → details in `docs/domains/order.md`
+- **Payment** — employee pays all unpaid orders at once via bank transfer + QR code; no partial payment → details in `docs/domains/order.md`
+- **Pre-fill from previous day** — `GET /api/menu/today` returns previous day's items when no menu exists yet for today; admin edits in UI then publishes — nothing is written to DB until publish → details in `docs/domains/menu.md`
+- **MenuItem auto-creation** — when admin types a new dish name not in the catalog, system creates the `MenuItem` automatically on publish; admin can also manage catalog directly at `/admin/menu-items` → details in `docs/domains/menu.md`
+- **Identity** — no auth; employee selects name on first visit, saved to `localStorage` as `selectedEmployeeId`
+
+---
+
+## Slack Integration (summary)
+
+| Event | Target | When |
+|---|---|---|
+| Menu published | Channel post | On publish |
+| Auto order created | Employee DM | On publish |
+| Payment reminder | Channel post | Cron 13:00 daily |
+
+Details + message templates → `docs/domains/order.md`, `src/features/slack-notifications/SPEC.md`
+
+---
+
+## Feature Map
+
+### Employee-facing
+
+| # | Feature | Route | Description |
+|---|---|---|---|
+| F1 | Home | `/` | Name selection on first visit → Order tab + Payment tab + auto order toggle |
+
+### Admin-facing
+
+| # | Feature | Route | Description |
+|---|---|---|---|
+| F2 | Admin Dashboard | `/admin` | Daily overview: orders placed, meal summary, payment status |
+| F3 | Menu Management | `/admin/menu` | Create/edit daily menu, publish, lock, clone from previous day |
+| F4 | App Settings | `/admin/settings` | Upload QR code image, manage AppConfig |
+| F5 | Employee Management | `/admin/employees` | CRUD employees, set role, email, slackId, autoOrder |
+| F6 | Monthly Report | `/admin/report` | Per-employee monthly cost breakdown, CSV export |
+| F7 | Slack Notifications | events + cron | Publish trigger + 13:00 payment reminder |
+| F8 | MenuItem Management | `/admin/menu-items` | CRUD dish catalog — name, soft-delete |
+
+---
+
+## API Routes
+
+```
+# Config
+GET    /api/config                        — Get AppConfig (qrCodeUrl)
+POST   /api/config/qr                     — Upload new QR image to Supabase Storage, update AppConfig
+
+# Employees
+GET    /api/employees                     — List active employees
+POST   /api/employees                     — Create employee
+PATCH  /api/employees/[id]                — Update name, email, slackId, role, autoOrder, isActive
+
+# Menu
+GET    /api/menu/today                    — Today's MenuOfDay if exists; else prefill from most recent day
+GET    /api/menu/[date]                   — Menu for a specific date (YYYY-MM-DD)
+POST   /api/menu/[id]/publish             — Create MenuOfDay + items, publish, trigger Slack + auto orders
+POST   /api/menu/[id]/lock                — Lock orders
+POST   /api/menu/[id]/unlock              — Unlock orders
+PATCH  /api/menu/[id]                     — Update items on an already-published menu (add/edit/remove)
+
+# MenuItem catalog
+GET    /api/menu-items                    — List active MenuItems
+POST   /api/menu-items                    — Create MenuItem
+PATCH  /api/menu-items/[id]               — Update name or soft-delete
+
+# Orders
+GET    /api/orders/today                  — All orders for today (admin view)
+GET    /api/orders?employeeId=&date=      — Orders for one employee on a specific date
+GET    /api/orders/unpaid?employeeId=     — All unpaid orders for one employee (all time)
+POST   /api/orders                        — Create order { employeeId, menuOfDayItemId, quantity }
+PATCH  /api/orders/[id]                   — Update order (change item or quantity)
+DELETE /api/orders/[id]                   — Cancel order
+PATCH  /api/orders/pay                    — Pay all unpaid { employeeId } → isPaid=true, paidAt=now
+PATCH  /api/orders/unpay                  — Undo payment { employeeId, date } → isPaid=false, paidAt=null
+
+# Report
+GET    /api/report/monthly?month=YYYY-MM  — Monthly stats for all employees
+GET    /api/report/employee/[id]?month=   — Monthly detail for one employee
+
+# Cron
+POST   /api/cron/remind-payment           — Post payment reminder to Slack (runs at 13:00)
+                                            Requires: Authorization: Bearer CRON_SECRET
+```
+
+---
+
+## Folder Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                          → F1: Home
+│   ├── admin/
+│   │   ├── page.tsx                      → F2: Admin dashboard
+│   │   ├── menu/page.tsx                 → F3: Menu management
+│   │   ├── settings/page.tsx             → F4: App settings
+│   │   ├── employees/page.tsx            → F5: Employee management
+│   │   ├── report/page.tsx               → F6: Monthly report
+│   │   └── menu-items/page.tsx           → F8: MenuItem management
+│   └── api/                              → All API route handlers
+│
+├── features/
+│   ├── home/                             → F1
+│   ├── admin-dashboard/                  → F2
+│   ├── menu-management/                  → F3
+│   ├── app-settings/                     → F4
+│   ├── employee-management/              → F5
+│   ├── monthly-report/                   → F6
+│   ├── slack-notifications/              → F7
+│   └── menu-item-management/             → F8
+│
+├── domains/
+│   ├── menu/                             → MenuOfDay, MenuOfDayItem, MenuItem shared logic
+│   ├── order/                            → Order logic, auto order, payment state
+│   └── employee/                         → Employee logic, role constants
+│
+└── shared/
+    ├── services/api.ts                   → Base HTTP client
+    ├── lib/
+    │   ├── prisma.ts                     → Prisma client singleton
+    │   ├── slack.ts                      → postChannel(), postDM(), getAdminSlackIds()
+    │   └── supabase.ts                   → Supabase client for storage operations
+    ├── constants/query-keys.ts
+    └── providers/
+```
+
+---
+
+## Infrastructure
+
+| Service | Purpose | Tier |
+|---|---|---|
+| Vercel | Next.js hosting + Cron Jobs | Free |
+| Supabase | PostgreSQL database | Free |
+| Supabase Storage | QR code image (`qr-codes/payment-qr.png`) | Free |
+| Slack Incoming Webhook | Channel posts | Free |
+| Slack Bot API | Direct messages (`chat.postMessage`) | Free |
+
+---
+
+## Environment Variables
+
+```env
+DATABASE_URL="postgresql://..."
+SUPABASE_URL="https://[ref].supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="eyJ..."
+NEXT_PUBLIC_SUPABASE_URL="https://[ref].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
+SLACK_BOT_TOKEN="xoxb-..."
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
+SLACK_CHANNEL_ID="C0XXXXXXX"
+NEXT_PUBLIC_APP_URL="https://datcom.company.com"
+TZ="Asia/Ho_Chi_Minh"
+CRON_SECRET="random-secret-string"
+```
+
+Full variable list with descriptions → `src/config/env.ts`
+
+---
+
+## Timezone
+
+All "today" logic uses **Asia/Ho_Chi_Minh (UTC+7)**. Never use raw `new Date()` for date boundary logic.
+Details + helpers → `docs/domains/menu.md`
+
+---
+
+## Key UX Principles
+
+1. **≤ 3 steps** to place an order: select name → select meal → submit
+2. **Mobile-first** — employees order from their phones
+3. **State always visible** — has the menu been published? have I ordered? do I owe money?
+4. **Name persists** — `localStorage` saves selected name; returning users skip name selection
+5. **Optimistic UI** — order appears immediately after submit
+6. **Slack links** go directly to the right page — no extra navigation
+
+---
+
+## Language Convention
+
+| Context | Language |
+|---|---|
+| Code, file names, variable names, comments | English |
+| UI labels, buttons, messages shown to users | Vietnamese |
+| Documentation (`.md` files) | English |

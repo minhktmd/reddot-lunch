@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  slackId   String?
+  role      String   @default("member") // "admin" | "member"
+  autoOrder Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  orders    Order[]
+
+  @@map("employees")
+}
+
+model MenuItem {
+  id             String          @id @default(cuid())
+  name           String
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  menuOfDayItems MenuOfDayItem[]
+
+  @@map("menu_items")
+}
+
+model MenuOfDay {
+  id          String          @id @default(cuid())
+  date        DateTime        @unique // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished Boolean         @default(false)
+  isLocked    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       MenuOfDayItem[]
+  orders      Order[]
+
+  @@map("menu_of_days")
+}
+
+model MenuOfDayItem {
+  id          String    @id @default(cuid())
+  menuOfDayId String
+  menuOfDay   MenuOfDay @relation(fields: [menuOfDayId], references: [id], onDelete: Cascade)
+  menuItemId  String
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
+  price       Int // VND
+  sideDishes  String?
+  orders      Order[]
+
+  @@map("menu_of_day_items")
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  menuOfDayId     String
+  menuOfDay       MenuOfDay     @relation(fields: [menuOfDayId], references: [id])
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  menuOfDayItemId String
+  menuOfDayItem   MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
+  quantity        Int           @default(1)
+  isAutoOrder     Boolean       @default(false)
+  isPaid          Boolean       @default(false)
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // No unique(menuOfDayId, employeeId) — one employee can have multiple orders per day
+
+  @@map("orders")
+}
+
+model AppConfig {
+  id        String   @id @default("singleton")
+  qrCodeUrl String?
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
