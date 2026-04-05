@@ -27,9 +27,9 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
-      <span className="font-medium text-gray-800">{dateLabel}</span>
-      <span className="text-gray-400">•</span>
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+      <span className="font-medium text-foreground">{dateLabel}</span>
+      <span className="text-muted-foreground">•</span>
       <span
         className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${
           menu.isLocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
@@ -37,7 +37,7 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
       >
         {statusLabel}
       </span>
-      <span className="text-gray-400">•</span>
+      <span className="text-muted-foreground">•</span>
       {menu.isLocked ? (
         <Button variant="outline" size="sm" onClick={handleUnlock} disabled={isUnlocking}>
           {isUnlocking ? 'Đang mở...' : 'Mở lại'}

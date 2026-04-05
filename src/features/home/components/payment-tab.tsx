@@ -16,13 +16,13 @@ export function PaymentTab({ employeeId }: PaymentTabProps) {
   const payAll = usePayAll(employeeId);
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm text-gray-400">Đang tải...</div>;
+    return <div className="py-12 text-center text-sm text-muted-foreground">Đang tải...</div>;
   }
 
   if (unpaidOrders.length === 0) {
     return (
       <div className="py-12 text-center">
-        <p className="text-gray-600">Bạn không có khoản nợ nào. 🎉</p>
+        <p className="text-muted-foreground">Bạn không có khoản nợ nào. 🎉</p>
       </div>
     );
   }

@@ -26,19 +26,19 @@ export function EmployeeRow({ employee, onEdit }: EmployeeRowProps) {
 
   return (
     <>
-      <tr className={cn('border-b border-gray-100 transition-colors hover:bg-gray-50', isInactive && 'opacity-50')}>
-        <td className="px-4 py-3 text-sm font-medium text-gray-900">{employee.name}</td>
-        <td className="px-4 py-3 text-sm text-gray-600">{employee.email ?? '—'}</td>
-        <td className="px-4 py-3 text-sm text-gray-600">{employee.slackId ?? '—'}</td>
-        <td className="px-4 py-3 text-sm text-gray-600">
+      <tr className={cn('border-b border-border transition-colors hover:bg-muted/50', isInactive && 'opacity-50')}>
+        <td className="px-4 py-3 text-sm font-medium text-foreground">{employee.name}</td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">{employee.email ?? '—'}</td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">{employee.slackId ?? '—'}</td>
+        <td className="px-4 py-3 text-sm text-muted-foreground">
           {employee.role === EMPLOYEE_ROLE.ADMIN ? 'Admin' : 'Thành viên'}
         </td>
-        <td className="px-4 py-3 text-center text-sm text-gray-600">{employee.autoOrder ? '✓' : '—'}</td>
+        <td className="px-4 py-3 text-center text-sm text-muted-foreground">{employee.autoOrder ? '✓' : '—'}</td>
         <td className="px-4 py-3 text-sm">
           <span
             className={cn(
               'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-              employee.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              employee.isActive ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
             )}
           >
             {employee.isActive ? 'Hoạt động' : 'Không hoạt động'}

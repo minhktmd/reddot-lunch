@@ -4,6 +4,7 @@ import { LayoutDashboard, UtensilsCrossed, Users, BookOpen, BarChart2, Settings 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { ThemeToggle } from '@/shared/components/atoms/theme-toggle';
 import { cn } from '@/shared/lib/cn';
 
 import type { ReactNode } from 'react';
@@ -19,16 +20,17 @@ const NAV_ITEMS = [
 
 function isActive(pathname: string, href: string) {
   if (href === '/admin') return pathname === '/admin';
-  return pathname.startsWith(href);
+  return pathname === href || pathname.startsWith(href + '/');
 }
 
 function DesktopSidebar({ pathname }: { pathname: string }) {
   return (
-    <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-gray-200 md:bg-white">
-      <div className="flex h-14 items-center border-b border-gray-200 px-4">
-        <Link href="/admin" className="text-lg font-semibold text-gray-900">
+    <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-border md:bg-card">
+      <div className="flex h-14 items-center justify-between border-b border-border px-4">
+        <Link href="/admin" className="text-lg font-semibold">
           Admin
         </Link>
+        <ThemeToggle />
       </div>
       <nav className="flex-1 space-y-1 px-2 py-3">
         {NAV_ITEMS.map((item) => {
@@ -39,7 +41,7 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                active ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                active ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
@@ -54,7 +56,7 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
 
 function MobileBottomNav({ pathname }: { pathname: string }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card md:hidden">
       <div className="flex items-center justify-around">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
@@ -64,7 +66,7 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
               href={item.href}
               className={cn(
                 'flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
-                active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+                active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -81,7 +83,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-dvh bg-gray-50">
+    <div className="flex h-dvh bg-background">
       <DesktopSidebar pathname={pathname} />
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
       <MobileBottomNav pathname={pathname} />

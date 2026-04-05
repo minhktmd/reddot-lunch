@@ -23,9 +23,9 @@ export function MenuDraftItemList() {
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[600px] text-left">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+          <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Món</th>
               <th className="px-4 py-3">Giá</th>
@@ -36,7 +36,7 @@ export function MenuDraftItemList() {
           <tbody>
             {draftAsResponse.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-400">
+                <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   Chưa có món nào. Thêm món bên dưới.
                 </td>
               </tr>
@@ -81,9 +81,9 @@ export function MenuPublishedItemList({ menu, isReadOnly = false }: PublishedLis
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[600px] text-left">
-          <thead className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+          <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-4 py-3">Món</th>
               <th className="px-4 py-3">Giá</th>
@@ -94,7 +94,7 @@ export function MenuPublishedItemList({ menu, isReadOnly = false }: PublishedLis
           <tbody>
             {menu.items.length === 0 ? (
               <tr>
-                <td colSpan={isReadOnly ? 3 : 4} className="px-4 py-6 text-center text-sm text-gray-400">
+                <td colSpan={isReadOnly ? 3 : 4} className="px-4 py-6 text-center text-sm text-muted-foreground">
                   Chưa có món nào.
                 </td>
               </tr>

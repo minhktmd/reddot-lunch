@@ -29,6 +29,7 @@ export function useCancelOrder(employeeId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.byEmployee(employeeId, date) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.orders.unpaid(employeeId) });
       toast.success('Đã hủy đơn');
     },
   });

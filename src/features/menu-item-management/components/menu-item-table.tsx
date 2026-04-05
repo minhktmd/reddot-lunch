@@ -23,7 +23,7 @@ export function MenuItemTable() {
   const sorted = useMemo(() => (menuItems ? sortMenuItems(menuItems) : []), [menuItems]);
 
   if (isLoading) {
-    return <p className="py-8 text-center text-sm text-gray-500">Đang tải...</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">Đang tải...</p>;
   }
 
   if (isError) {
@@ -31,13 +31,13 @@ export function MenuItemTable() {
   }
 
   if (sorted.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-500">Chưa có món ăn nào.</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">Chưa có món ăn nào.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-left">
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Tên món</th>
             <th className="px-4 py-3">Ngày tạo</th>

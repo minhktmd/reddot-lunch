@@ -119,7 +119,7 @@ Always visible below the tabs, regardless of which tab is active.
 
 - Reflects current `Employee.autoOrder` value
 - On toggle: `PATCH /api/employees/[id]` with `{ autoOrder: boolean }` — fire and forget, optimistic update
-- Small helper text: `"Hệ thống sẽ tự đặt một món ngẫu nhiên khi admin đăng thực đơn"`
+- Small helper text: `"Hệ thống sẽ tự đặt một món ngẫu nhiên hàng ngày khi admin đăng thực đơn"`
 
 ---
 

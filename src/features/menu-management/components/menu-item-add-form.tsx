@@ -5,7 +5,6 @@ import { useState } from 'react'
 import { Button } from '@/shared/components/atoms/button'
 import { Input } from '@/shared/components/atoms/input'
 import { type MenuItemCatalogItem } from '@/domains/menu'
-import { cn } from '@/shared/lib/cn'
 
 type Props = {
   catalogItems: MenuItemCatalogItem[]
@@ -58,8 +57,8 @@ export function MenuItemAddForm({ catalogItems, onAdd, isPending = false }: Prop
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
-      <p className="mb-3 text-sm font-medium text-gray-600">Thêm món</p>
+    <div className="mt-4 rounded-lg border border-dashed border-border bg-muted p-4">
+      <p className="mb-3 text-sm font-medium text-muted-foreground">Thêm món</p>
       <div className="relative flex flex-wrap items-start gap-2">
         <div className="relative flex flex-col gap-1">
           <Input
@@ -76,22 +75,22 @@ export function MenuItemAddForm({ catalogItems, onAdd, isPending = false }: Prop
           />
           {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
           {showSuggestions && name.length > 0 && (
-            <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-gray-200 bg-white shadow-lg">
+            <div className="absolute top-full left-0 z-10 mt-1 w-64 rounded-md border border-border bg-card shadow-lg">
               {filtered.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-gray-100"
+                  className="w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-muted"
                   onMouseDown={() => handleSelectSuggestion(item)}
                 >
                   <span className="font-medium">{item.name}</span>
                   {item.lastUsedPrice && (
-                    <span className="ml-2 text-gray-500 text-xs">{item.lastUsedPrice.toLocaleString('vi-VN')}đ</span>
+                    <span className="ml-2 text-muted-foreground text-xs">{item.lastUsedPrice.toLocaleString('vi-VN')}đ</span>
                   )}
                 </button>
               ))}
               {filtered.length === 0 && (
-                <div className="px-3 py-2 text-sm text-gray-500">
+                <div className="px-3 py-2 text-sm text-muted-foreground">
                   Thêm món mới: <span className="font-medium">{name}</span>
                 </div>
               )}
@@ -115,14 +114,16 @@ export function MenuItemAddForm({ catalogItems, onAdd, isPending = false }: Prop
           {errors.price && <p className="text-xs text-red-500">{errors.price}</p>}
         </div>
 
-        <Input
-          value={sideDishes}
-          onChange={(e) => setSideDishes(e.target.value)}
-          placeholder="Món ăn kèm"
-          className={cn('w-48')}
-        />
+        <div className="flex flex-col gap-1">
+          <Input
+            value={sideDishes}
+            onChange={(e) => setSideDishes(e.target.value)}
+            placeholder="Món ăn kèm"
+            className="w-48"
+          />
+        </div>
 
-        <Button onClick={handleAdd} disabled={isPending} size="md">
+        <Button onClick={handleAdd} disabled={isPending} size="default">
           {isPending ? 'Đang thêm...' : 'Thêm'}
         </Button>
       </div>

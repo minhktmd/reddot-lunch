@@ -44,10 +44,10 @@ export function MenuItemRow({
   }
 
   return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="px-4 py-3 font-medium text-gray-900">{item.menuItem.name}</td>
-      <td className="px-4 py-3 text-gray-700">{item.price.toLocaleString('vi-VN')}đ</td>
-      <td className="px-4 py-3 text-gray-500">{item.sideDishes ?? '—'}</td>
+    <tr className="border-b border-border last:border-0">
+      <td className="px-4 py-3 font-medium text-foreground">{item.menuItem.name}</td>
+      <td className="px-4 py-3 text-foreground">{item.price.toLocaleString('vi-VN')}đ</td>
+      <td className="px-4 py-3 text-muted-foreground">{item.sideDishes ?? '—'}</td>
       {!isReadOnly && (
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">

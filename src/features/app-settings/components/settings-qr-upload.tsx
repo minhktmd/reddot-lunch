@@ -57,17 +57,11 @@ export function SettingsQRUpload({ hasExistingQR }: SettingsQRUploadProps) {
 
   return (
     <div className="space-y-4">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={ACCEPTED_TYPES}
-        onChange={handleFileChange}
-        className="hidden"
-      />
+      <input ref={fileInputRef} type="file" accept={ACCEPTED_TYPES} onChange={handleFileChange} className="hidden" />
 
       {previewUrl ? (
         <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-700">Xem trước:</p>
+          <p className="text-muted-foreground text-sm font-medium">Xem trước:</p>
           <img src={previewUrl} alt="Xem trước QR" className="h-[200px] w-[200px] rounded-md border object-contain" />
           <div className="flex gap-2">
             <Button onClick={handleConfirm} disabled={isPending}>

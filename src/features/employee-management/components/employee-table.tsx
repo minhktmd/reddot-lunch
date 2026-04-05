@@ -11,7 +11,7 @@ export function EmployeeTable() {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (isLoading) {
-    return <p className="py-8 text-center text-sm text-gray-500">Đang tải...</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">Đang tải...</p>;
   }
 
   if (isError) {
@@ -19,13 +19,13 @@ export function EmployeeTable() {
   }
 
   if (!employees || employees.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-500">Chưa có nhân viên nào.</p>;
+    return <p className="py-8 text-center text-sm text-muted-foreground">Chưa có nhân viên nào.</p>;
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200">
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[700px] text-left">
-        <thead className="border-b border-gray-200 bg-gray-50 text-xs font-medium uppercase tracking-wide text-gray-500">
+        <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Tên</th>
             <th className="px-4 py-3">Email</th>

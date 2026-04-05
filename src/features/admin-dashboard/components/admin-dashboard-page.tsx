@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { EmployeePayment } from '../types/admin-dashboard.type';
 import { useTodayMenu } from '../hooks/use-today-menu';
 import { useTodayOrders } from '../hooks/use-today-orders';
-import { useEmployees } from '../hooks/use-employees';
 import { useLockMenu } from '../hooks/use-lock-menu';
 import { useUnlockMenu } from '../hooks/use-unlock-menu';
 import { DashboardStatusBar } from './dashboard-status-bar';
@@ -16,7 +15,6 @@ import { DashboardPaymentStatus } from './dashboard-payment-status';
 export function AdminDashboardPage() {
   const { data: menuResponse, isLoading: isMenuLoading } = useTodayMenu();
   const { data: todayOrders = [], isLoading: isOrdersLoading } = useTodayOrders();
-  const { data: employees = [] } = useEmployees();
   const { mutate: lock, isPending: isLocking } = useLockMenu();
   const { mutate: unlock, isPending: isUnlocking } = useUnlockMenu();
 
@@ -24,7 +22,7 @@ export function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center text-gray-500">
+      <div className="flex min-h-[200px] items-center justify-center text-muted-foreground">
         Đang tải...
       </div>
     );
@@ -36,10 +34,10 @@ export function AdminDashboardPage() {
   if (!hasPublishedMenu) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-gray-600">Hôm nay chưa có thực đơn.</p>
+        <p className="text-muted-foreground">Hôm nay chưa có thực đơn.</p>
         <Link
           href="/admin/menu"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           Tạo thực đơn
         </Link>
@@ -49,11 +47,7 @@ export function AdminDashboardPage() {
 
   const menu = menuResponse.menu;
 
-  // Derived data — computed client-side from orders + employees
-  const orderedEmployeeIds = new Set(todayOrders.map((o) => o.employee.id));
-
-  const notOrdered = employees.filter((e) => e.isActive && !orderedEmployeeIds.has(e.id));
-
+  // Derived data — computed client-side from orders
   const employeeOrderMap = todayOrders.reduce<
     Record<string, { name: string; totalAmount: number; hasPaid: boolean; paidAt: string | null }>
   >((acc, order) => {
@@ -90,8 +84,8 @@ export function AdminDashboardPage() {
         isLocking={isLocking}
         isUnlocking={isUnlocking}
       />
-      <DashboardOrderSummary orders={todayOrders} notOrdered={notOrdered} />
       <DashboardKitchenSummary orders={todayOrders} />
+      <DashboardOrderSummary orders={todayOrders} />
       <DashboardPaymentStatus paidEmployees={paidEmployees} unpaidEmployees={unpaidEmployees} />
     </div>
   );

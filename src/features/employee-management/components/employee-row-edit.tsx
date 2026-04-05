@@ -60,7 +60,7 @@ export function EmployeeRowEdit({ employee, onCancel }: EmployeeRowEditProps) {
 
           <div className="flex flex-col gap-1">
             <Input placeholder="Slack ID" {...register('slackId')} className="w-32" />
-            <p className="text-xs text-gray-400">Slack member ID, ví dụ: U012AB3CD</p>
+            <p className="text-xs text-muted-foreground">Slack member ID, ví dụ: U012AB3CD</p>
           </div>
 
           <Controller

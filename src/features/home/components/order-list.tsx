@@ -52,11 +52,11 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
 
   return (
     <div className="mt-4">
-      <h3 className="mb-2 text-sm font-medium text-gray-700">Đơn của bạn hôm nay</h3>
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <h3 className="mb-2 text-sm font-medium text-foreground">Đơn của bạn hôm nay</h3>
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-50 text-left text-gray-600">
+            <tr className="border-b bg-muted text-left text-muted-foreground">
               <th className="px-4 py-2 font-medium">Món</th>
               <th className="px-4 py-2 font-medium">SL</th>
               <th className="px-4 py-2 font-medium">Thành tiền</th>
@@ -91,45 +91,45 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                       </Select>
                     ) : (
                       <div>
-                        <span className="text-gray-900">{order.menuOfDayItem.menuItem.name}</span>
+                        <span className="text-foreground">{order.menuOfDayItem.menuItem.name}</span>
                         {order.isAutoOrder && (
-                          <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">tự động</span>
+                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">tự động</span>
                         )}
                       </div>
                     )}
                   </td>
                   <td className="px-4 py-2">
                     {isEditable ? (
-                      <div className="inline-flex items-center rounded-md border border-gray-300">
+                      <div className="inline-flex items-center rounded-md border border-border">
                         <button
                           type="button"
                           onClick={() => setEditState((s) => s && { ...s, quantity: Math.max(1, s.quantity - 1) })}
                           disabled={currentQty <= 1}
-                          className="cursor-pointer px-2.5 py-1 text-sm text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          className="cursor-pointer px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="Giảm số lượng"
                         >
                           −
                         </button>
-                        <span className="min-w-8 text-center text-sm font-medium text-gray-800">{currentQty}</span>
+                        <span className="min-w-8 text-center text-sm font-medium text-foreground">{currentQty}</span>
                         <button
                           type="button"
                           onClick={() => setEditState((s) => s && { ...s, quantity: s.quantity + 1 })}
-                          className="cursor-pointer px-2.5 py-1 text-sm text-gray-600 hover:bg-gray-100"
+                          className="cursor-pointer px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted"
                           aria-label="Tăng số lượng"
                         >
                           +
                         </button>
                       </div>
                     ) : (
-                      <span className="text-gray-700">{order.quantity}</span>
+                      <span className="text-foreground">{order.quantity}</span>
                     )}
                   </td>
-                  <td className="px-4 py-2 font-medium text-gray-900">{formatPrice(currentPrice * currentQty)}</td>
+                  <td className="px-4 py-2 font-medium text-foreground">{formatPrice(currentPrice * currentQty)}</td>
                   {!isLocked && (
                     <td className="px-4 py-2">
                       {cancellingId === order.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600">Xác nhận hủy?</span>
+                          <span className="text-xs text-muted-foreground">Xác nhận hủy?</span>
                           <button
                             onClick={() => {
                               onCancel(order.id);
@@ -142,7 +142,7 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                           </button>
                           <button
                             onClick={() => setCancellingId(null)}
-                            className="cursor-pointer text-xs text-gray-500 hover:underline"
+                            className="cursor-pointer text-xs text-muted-foreground hover:underline"
                           >
                             Không
                           </button>
@@ -158,7 +158,7 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                           </button>
                           <button
                             onClick={stopEditing}
-                            className="cursor-pointer text-xs text-gray-500 hover:underline"
+                            className="cursor-pointer text-xs text-muted-foreground hover:underline"
                           >
                             Hủy
                           </button>

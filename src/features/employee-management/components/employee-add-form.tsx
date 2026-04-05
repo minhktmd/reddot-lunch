@@ -38,7 +38,7 @@ export function EmployeeAddForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-wrap items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-4"
+      className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-muted p-4"
     >
       <div className="flex flex-col gap-1">
         <Input placeholder="Tên *" {...register('name')} className="w-40" />
@@ -68,7 +68,7 @@ export function EmployeeAddForm() {
         )}
       />
 
-      <Button type="submit" disabled={isPending} size="md">
+      <Button type="submit" disabled={isPending} size="default">
         {isPending ? 'Đang thêm...' : 'Thêm'}
       </Button>
     </form>

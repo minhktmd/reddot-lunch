@@ -11,7 +11,7 @@ export function MenuKitchenSummary() {
   const [copied, setCopied] = useState(false)
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400">Đang tải đơn hàng...</p>
+    return <p className="text-sm text-muted-foreground">Đang tải đơn hàng...</p>
   }
 
   // Aggregate by dish name
@@ -44,14 +44,14 @@ export function MenuKitchenSummary() {
   }
 
   return (
-    <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="mt-6 rounded-lg border border-border bg-muted p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">Tóm tắt đơn hàng hôm nay</h3>
+        <h3 className="font-semibold text-foreground">Tóm tắt đơn hàng hôm nay</h3>
         <Button variant="outline" size="sm" onClick={handleCopy}>
           {copied ? 'Đã sao chép!' : 'Sao chép'}
         </Button>
       </div>
-      <pre className="whitespace-pre-wrap font-mono text-sm text-gray-700">{summaryText}</pre>
+      <pre className="whitespace-pre-wrap font-mono text-sm text-foreground">{summaryText}</pre>
     </div>
   )
 }

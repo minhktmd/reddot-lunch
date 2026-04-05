@@ -30,7 +30,7 @@ export function MenuItemRowEdit({ item, onSave, onCancel, isPending = false }: P
 
   return (
     <tr className="border-b border-blue-100 bg-blue-50 last:border-0">
-      <td className="px-4 py-2 font-medium text-gray-900">{item.menuItem.name}</td>
+      <td className="px-4 py-2 font-medium text-foreground">{item.menuItem.name}</td>
       <td className="px-4 py-2">
         <div className="flex flex-col gap-1">
           <Input

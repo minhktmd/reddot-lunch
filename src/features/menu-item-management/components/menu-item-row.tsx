@@ -27,14 +27,14 @@ export function MenuItemRow({ menuItem, onEdit }: MenuItemRowProps) {
   });
 
   return (
-    <tr className={cn('border-b border-gray-100 transition-colors hover:bg-gray-50', isInactive && 'opacity-50')}>
-      <td className="px-4 py-3 text-sm font-medium text-gray-900">{menuItem.name}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{formattedDate}</td>
+    <tr className={cn('border-b border-border transition-colors hover:bg-muted/50', isInactive && 'opacity-50')}>
+      <td className="px-4 py-3 text-sm font-medium text-foreground">{menuItem.name}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{formattedDate}</td>
       <td className="px-4 py-3 text-sm">
         <span
           className={cn(
             'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
-            menuItem.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+            menuItem.isActive ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
           )}
         >
           {menuItem.isActive ? 'Hoạt động' : 'Không hoạt động'}

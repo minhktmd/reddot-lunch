@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 import { uploadQRCode } from '@/shared/lib/supabase';
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB

@@ -30,7 +30,7 @@ export function MenuManagementPage() {
   }, [data?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <p className="py-12 text-center text-sm text-gray-400">Đang tải thực đơn...</p>
+    return <p className="py-12 text-center text-sm text-muted-foreground">Đang tải thực đơn...</p>
   }
 
   if (isError || !data) {

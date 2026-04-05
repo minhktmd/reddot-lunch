@@ -32,7 +32,7 @@ export function HomePage() {
   if (!isHydrated || employeesLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-sm text-gray-400">Đang tải...</div>
+        <div className="text-sm text-muted-foreground">Đang tải...</div>
       </div>
     );
   }
@@ -44,7 +44,7 @@ export function HomePage() {
   const employee = employees.find((e) => e.id === selectedEmployeeId);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <HomeHeader employeeName={employee?.name ?? ''} onChangeName={clearSelectedEmployee} />
 
       <HomeTabs employeeId={selectedEmployeeId} />

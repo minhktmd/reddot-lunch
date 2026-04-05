@@ -9,7 +9,7 @@ type Props = {
 }
 
 const STATUS_CONFIG: Record<MenuStatus, { label: string; className: string }> = {
-  prefill: { label: 'Chưa đăng', className: 'bg-gray-100 text-gray-600' },
+  prefill: { label: 'Chưa đăng', className: 'bg-muted text-muted-foreground' },
   published: { label: 'Đã đăng', className: 'bg-green-100 text-green-700' },
   locked: { label: 'Đã chốt', className: 'bg-red-100 text-red-700' },
 }

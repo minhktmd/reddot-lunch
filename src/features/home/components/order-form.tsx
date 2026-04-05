@@ -62,10 +62,10 @@ export function OrderForm({
   }, [defaultItemId, setValue]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-lg border bg-gray-50 p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="rounded-lg border bg-muted p-4">
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Chọn món</label>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Chọn món</label>
           <Select
             value={selectedItemId}
             onValueChange={(val) => setValue('menuOfDayItemId', val, { shouldValidate: true })}
@@ -87,12 +87,12 @@ export function OrderForm({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Số lượng</label>
+          <label className="mb-1 block text-sm font-medium text-muted-foreground">Số lượng</label>
           <input
             type="number"
             min={1}
             {...register('quantity', { valueAsNumber: true })}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
           />
           {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message}</p>}
         </div>
@@ -101,14 +101,14 @@ export function OrderForm({
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 cursor-pointer rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 cursor-pointer rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {isLoading ? 'Đang xử lý...' : submitLabel}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            className="cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
           >
             Hủy
           </button>

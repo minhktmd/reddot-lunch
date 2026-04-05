@@ -12,10 +12,10 @@ export function PaymentTable({ orders }: PaymentTableProps) {
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <div className="overflow-x-auto rounded-lg border bg-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-50 text-left text-gray-600">
+            <tr className="border-b bg-muted text-left text-muted-foreground">
               <th className="px-4 py-2 font-medium">Ngày</th>
               <th className="px-4 py-2 font-medium">Món</th>
               <th className="px-4 py-2 font-medium">SL</th>
@@ -26,11 +26,11 @@ export function PaymentTable({ orders }: PaymentTableProps) {
           <tbody>
             {orders.map((order) => (
               <tr key={order.id} className="border-b last:border-0">
-                <td className="px-4 py-2 text-gray-600">{formatDate(order.menuOfDay.date)}</td>
-                <td className="px-4 py-2 text-gray-900">{order.menuOfDayItem.menuItem.name}</td>
-                <td className="px-4 py-2 text-gray-700">{order.quantity}</td>
-                <td className="px-4 py-2 text-gray-700">{formatPrice(order.menuOfDayItem.price)}</td>
-                <td className="px-4 py-2 font-medium text-gray-900">
+                <td className="px-4 py-2 text-muted-foreground">{formatDate(order.menuOfDay.date)}</td>
+                <td className="px-4 py-2 text-foreground">{order.menuOfDayItem.menuItem.name}</td>
+                <td className="px-4 py-2 text-foreground">{order.quantity}</td>
+                <td className="px-4 py-2 text-foreground">{formatPrice(order.menuOfDayItem.price)}</td>
+                <td className="px-4 py-2 font-medium text-foreground">
                   {formatPrice(order.menuOfDayItem.price * order.quantity)}
                 </td>
               </tr>
@@ -39,8 +39,8 @@ export function PaymentTable({ orders }: PaymentTableProps) {
         </table>
       </div>
 
-      <div className="flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">
-        <span className="font-medium text-gray-700">Tổng cần trả:</span>
+      <div className="flex items-center justify-between rounded-md bg-muted px-4 py-3">
+        <span className="font-medium text-foreground">Tổng cần trả:</span>
         <span className="text-lg font-bold text-blue-600">{formatPrice(total)}</span>
       </div>
     </div>
