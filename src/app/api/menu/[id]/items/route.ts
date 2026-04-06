@@ -45,33 +45,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { items: submittedItems } = result.data;
     const submittedNames = new Set(submittedItems.map((i) => i.name));
 
-    // Fetch existing items with order counts
     const existingItems = await prisma.menuOfDayItem.findMany({
       where: { menuOfDayId: id },
-      include: { _count: { select: { orders: true } } },
     });
 
-    // Check if any items being removed have orders
     const itemsToRemove = existingItems.filter((item) => !submittedNames.has(item.name));
-    const blockedItems = itemsToRemove.filter((item) => item._count.orders > 0);
 
-    if (blockedItems.length > 0) {
-      return NextResponse.json(
-        {
-          error: 'blocked',
-          blockedNames: blockedItems.map((item) => item.name),
-        },
-        { status: 409 },
-      );
-    }
-
-    // All in a single transaction: delete removed items + upsert submitted items
+    // All in a single transaction: cascade-delete orders, delete removed items, upsert submitted items
     const updated = await prisma.$transaction(async (tx) => {
-      // Delete items not in submitted list (already verified no orders)
-      if (itemsToRemove.length > 0) {
-        await tx.menuOfDayItem.deleteMany({
-          where: { id: { in: itemsToRemove.map((i) => i.id) } },
-        });
+      // For removed items: delete their orders first, then delete the items
+      for (const item of itemsToRemove) {
+        await tx.order.deleteMany({ where: { menuOfDayItemId: item.id } });
+        await tx.menuOfDayItem.delete({ where: { id: item.id } });
       }
 
       // Upsert submitted items by (menuOfDayId, name)

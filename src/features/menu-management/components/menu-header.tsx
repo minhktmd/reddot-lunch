@@ -1,14 +1,16 @@
 'use client';
 
-import { type MenuOfDayResponse } from '@/domains/menu';
+import { Button } from '@/shared/components/atoms/button';
 
+import { useSaveMenuItems } from '../hooks/use-save-menu-items';
 import { useMenuDraftStore } from '../stores/menu-draft.store';
 
 import { MenuLockButton } from './menu-lock-button';
 import { MenuPublishButton } from './menu-publish-button';
-import { MenuSaveButton } from './menu-save-button';
 import { MenuStatusBadge } from './menu-status-badge';
 import { MenuUnlockButton } from './menu-unlock-button';
+
+import type { MenuOfDayResponse } from '@/domains/menu';
 
 type MenuStatus = 'prefill' | 'published' | 'locked';
 
@@ -31,6 +33,19 @@ function formatDate(date: Date): string {
 
 export function MenuHeader({ status, menu, date }: Props) {
   const hasUnsavedChanges = useMenuDraftStore((s) => s.hasUnsavedChanges);
+  const items = useMenuDraftStore((s) => s.items);
+  const { mutate: save, isPending: isSaving } = useSaveMenuItems(menu?.id ?? '');
+
+  const handleSave = () => {
+    const validItems = items.filter((i) => i.name.trim() && i.price > 0);
+    save({
+      items: validItems.map((i) => ({
+        name: i.name.trim(),
+        price: i.price,
+        sideDishes: i.sideDishes.trim() || undefined,
+      })),
+    });
+  };
 
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -42,7 +57,11 @@ export function MenuHeader({ status, menu, date }: Props) {
         {status === 'prefill' && <MenuPublishButton />}
         {status === 'published' && menu && (
           <>
-            {hasUnsavedChanges && <MenuSaveButton menuId={menu.id} />}
+            {hasUnsavedChanges && (
+              <Button variant="default" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </Button>
+            )}
             <MenuLockButton menuId={menu.id} />
           </>
         )}

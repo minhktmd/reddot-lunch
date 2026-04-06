@@ -28,7 +28,11 @@ export const useMenuDraftStore = create<MenuDraftStore>((set) => ({
 
   setSuggestions: (suggestions) => set({ suggestions }),
 
-  setItems: (items) => set({ items, hasUnsavedChanges: false }),
+  setItems: (items) =>
+    set((state) => ({
+      items,
+      hasUnsavedChanges: state.items.length > 0,
+    })),
 
   updateItem: (tempId, patch) =>
     set((state) => ({

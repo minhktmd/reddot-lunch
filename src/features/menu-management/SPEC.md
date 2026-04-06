@@ -76,9 +76,12 @@ When admin makes any change (edit a cell, add a row, delete a row) → `hasUnsav
 
 **Save flow ("Lưu thay đổi"):**
 1. `PATCH /api/menu/[id]/items` with full current item list — single request
-2. Server diffs: deletes removed items (blocked if they have orders), upserts remaining
-3. If any items cannot be deleted because they have orders → return 409 with list of blocked dish names → show error toast: `"Không thể xóa: [tên món] đã có đơn hàng"`
-4. On success: `hasUnsavedChanges = false`, button disappears
+2. Server diffs the submitted list against existing `MenuOfDayItem` records for this menu
+3. For items being removed: **cascade delete their orders first**, then delete the item — all inside a single Prisma transaction
+4. For items remaining: upsert by `(menuOfDayId, name)`
+5. On success: return updated item list, frontend sets `hasUnsavedChanges = false`, button disappears
+
+**Why cascade delete orders:** if admin removes a dish, it means the supplier is no longer serving it. Any employee orders for that dish are invalidated — the employee will see the dish gone and must re-order another dish. No 409 blocking — the delete always succeeds.
 
 ---
 
@@ -157,7 +160,7 @@ When admin types in the dish name cell:
 - [ ] US9: Admin publishes the menu — single API call, Slack fires, auto orders created, UI shows Published
 - [ ] US10: After publish, admin can still edit the table inline — "Lưu thay đổi" button appears when changes exist
 - [ ] US11: Admin saves post-publish changes — single API call, all changes applied at once
-- [ ] US12: Admin cannot remove a dish that already has orders — error toast shows blocked dish names
+- [ ] US12: Admin removes a dish that has orders — orders for that dish are automatically deleted, dish is removed successfully
 - [ ] US13: Admin locks orders — kitchen summary appears with copyable text
 - [ ] US14: Admin can copy kitchen summary to clipboard
 - [ ] US15: Admin can unlock orders to allow changes

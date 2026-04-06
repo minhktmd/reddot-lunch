@@ -1,5 +1,18 @@
 'use client';
 
+import { useState } from 'react';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/components/atoms/alert-dialog';
 import { Button } from '@/shared/components/atoms/button';
 import { formatDateFull } from '@/shared/utils/format';
 
@@ -16,15 +29,17 @@ type Props = {
 export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlocking }: Props) {
   const dateLabel = formatDateFull(menu.date);
   const statusLabel = menu.isLocked ? 'Đã chốt' : 'Đã đăng';
+  const [lockOpen, setLockOpen] = useState(false);
+  const [unlockOpen, setUnlockOpen] = useState(false);
 
-  const handleLock = () => {
-    if (!window.confirm('Xác nhận chốt sổ? Nhân viên sẽ không thể thay đổi đơn hàng sau khi chốt.')) return;
+  const handleLockConfirm = () => {
     onLock();
+    setLockOpen(false);
   };
 
-  const handleUnlock = () => {
-    if (!window.confirm('Xác nhận mở lại? Nhân viên sẽ có thể thay đổi đơn hàng.')) return;
+  const handleUnlockConfirm = () => {
     onUnlock();
+    setUnlockOpen(false);
   };
 
   return (
@@ -40,13 +55,53 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
       </span>
       <span className="text-muted-foreground">•</span>
       {menu.isLocked ? (
-        <Button variant="outline" size="sm" onClick={handleUnlock} disabled={isUnlocking}>
-          {isUnlocking ? 'Đang mở...' : 'Mở lại'}
-        </Button>
+        <AlertDialog open={unlockOpen} onOpenChange={setUnlockOpen}>
+          <AlertDialogTrigger
+            render={
+              <Button variant="outline" size="sm" disabled={isUnlocking}>
+                {isUnlocking ? 'Đang mở...' : 'Mở lại'}
+              </Button>
+            }
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Mở lại thực đơn?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Nhân viên sẽ có thể chỉnh sửa đơn hàng sau khi mở lại.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction onClick={handleUnlockConfirm} disabled={isUnlocking}>
+                {isUnlocking ? 'Đang mở...' : 'Xác nhận'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : (
-        <Button variant="destructive" size="sm" onClick={handleLock} disabled={isLocking}>
-          {isLocking ? 'Đang chốt...' : 'Chốt sổ'}
-        </Button>
+        <AlertDialog open={lockOpen} onOpenChange={setLockOpen}>
+          <AlertDialogTrigger
+            render={
+              <Button variant="destructive" size="sm" disabled={isLocking}>
+                {isLocking ? 'Đang chốt...' : 'Chốt sổ'}
+              </Button>
+            }
+          />
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Xác nhận chốt sổ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Nhân viên sẽ không thể thay đổi đơn hàng sau khi chốt.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Hủy</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={handleLockConfirm} disabled={isLocking}>
+                {isLocking ? 'Đang chốt...' : 'Xác nhận'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
