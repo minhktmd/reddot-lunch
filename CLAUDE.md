@@ -337,6 +337,28 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 - **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s (`refetchInterval: 30_000`)
 - **Batch writes:** menu editing never triggers per-action API calls — all buffered in store, saved in one request
 
+**Prefetch strategy (critical for perceived performance on Supabase free tier):**
+
+Two APIs are prefetched proactively to eliminate first-load spinners on the most-visited pages:
+
+| API | Where prefetched | Why |
+|---|---|---|
+| `GET /api/employees` | Root layout (`app/layout.tsx`) | Needed on every page — name dropdown, order attribution |
+| `GET /api/menu/today` | Root layout (`app/layout.tsx`) | Needed on both `/` and `/admin` on every visit |
+
+All other APIs are fetched lazily when their page/component mounts — do not prefetch them:
+- `/api/orders/today` — admin only, changes frequently, 30s polling handles freshness
+- `/api/orders/unpaid` — requires `employeeId` which may not be known at layout time
+- `/api/menu/suggestions` — admin only, only needed in F3
+- `/api/report/monthly` — heavy query, only needed in F6
+- `/api/config` — rarely changes, only needed in payment tab and F4
+
+**Prefetch on hover** — admin nav links prefetch their primary data source when hovered:
+- Hover "Tổng quan" (`/admin`) → `queryClient.prefetchQuery(queryKeys.orders.today())`
+- Hover "Thực đơn hôm nay" (`/admin/menu`) → `queryClient.prefetchQuery(queryKeys.menu.suggestions())`
+
+Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClient.prefetchQuery(...)`. The ~200–300ms between hover and click is usually enough for the cache to populate on a warm Supabase connection.
+
 → Use skill `service-pattern` for base service boilerplate, safeParse pattern, and mutation boilerplate
 
 ### Form Handling
