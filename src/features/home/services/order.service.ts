@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
-import { apiClient } from '@/shared/services/api';
 import { logger } from '@/shared/lib/logger';
+import { apiClient } from '@/shared/services/api';
+
 import { orderItemSchema, unpaidOrderItemSchema, type OrderItem, type UnpaidOrderItem } from '../types/order.type';
 
 type PlaceOrderInput = {

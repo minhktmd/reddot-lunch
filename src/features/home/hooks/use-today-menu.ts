@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { queryKeys } from '@/shared/constants/query-keys';
+
 import { getTodayMenu } from '../services/menu.service';
 
 export function useTodayMenu() {

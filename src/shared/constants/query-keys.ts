@@ -13,9 +13,7 @@ export const queryKeys = {
   },
   menu: {
     today: ['menu', 'today'] as const,
-  },
-  menuItems: {
-    all: ['menu-items'] as const,
+    suggestions: ['menu', 'suggestions'] as const,
   },
   orders: {
     today: ['orders', 'today'] as const,

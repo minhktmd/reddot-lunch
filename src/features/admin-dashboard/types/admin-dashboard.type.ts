@@ -9,8 +9,8 @@ export const todayAdminOrderSchema = z.object({
   employee: z.object({ id: z.string(), name: z.string() }),
   menuOfDayItem: z.object({
     id: z.string(),
+    name: z.string(),
     price: z.number(),
-    menuItem: z.object({ id: z.string(), name: z.string() }),
   }),
 });
 

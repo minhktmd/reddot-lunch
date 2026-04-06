@@ -1,8 +1,8 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { useQueryClient } from '@tanstack/react-query';
 
 import { queryKeys } from '@/shared/constants/query-keys';
 import { cn } from '@/shared/lib/cn';

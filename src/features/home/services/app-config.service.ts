@@ -1,5 +1,6 @@
-import { apiClient } from '@/shared/services/api';
 import { logger } from '@/shared/lib/logger';
+import { apiClient } from '@/shared/services/api';
+
 import { appConfigSchema, type AppConfigData } from '../types/order.type';
 
 export async function getAppConfig(): Promise<AppConfigData | null> {

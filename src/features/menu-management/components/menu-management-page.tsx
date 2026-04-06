@@ -1,59 +1,71 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
+import { useEffect } from 'react';
 
-import { useMenuDraftStore } from '../stores/menu-draft.store'
-import { useTodayMenu } from '../hooks/use-today-menu'
-import { MenuHeader } from './menu-header'
-import { MenuDraftItemList, MenuPublishedItemList } from './menu-item-list'
-import { MenuKitchenSummary } from './menu-kitchen-summary'
+import { useMenuSuggestions } from '../hooks/use-menu-suggestions';
+import { useTodayMenu } from '../hooks/use-today-menu';
+import { useMenuDraftStore } from '../stores/menu-draft.store';
+
+import { MenuHeader } from './menu-header';
+import { MenuKitchenSummary } from './menu-kitchen-summary';
+import { MenuTable, MenuTableReadonly } from './menu-table';
 
 // Use a fixed date reference for the header display — won't change during session
-const PAGE_DATE = new Date()
+const PAGE_DATE = new Date();
+
+let tempIdCounter = 0;
 
 export function MenuManagementPage() {
-  const { data, isLoading, isError } = useTodayMenu()
-  const setItems = useMenuDraftStore((s) => s.setItems)
+  const { data, isLoading, isError } = useTodayMenu();
+  useMenuSuggestions();
+  const setItems = useMenuDraftStore((s) => s.setItems);
+  const reset = useMenuDraftStore((s) => s.reset);
 
-  // Initialize draft store with prefill data once when page loads
+  // Initialize draft store from API data
   useEffect(() => {
-    if (data?.status === 'prefill') {
+    if (!data) return;
+
+    if (data.status === 'prefill') {
+      // Pre-publish: start with empty table (per SPEC: no prefill from previous day)
+      reset();
+    } else if (data.status === 'exists' && !data.menu.isLocked) {
+      // Published but not locked: populate store from DB items
       setItems(
-        data.items.map((item, idx) => ({
-          tempId: `prefill-${idx}-${item.menuItemId}`,
-          menuItemName: item.menuItemName,
+        data.menu.items.map((item) => ({
+          tempId: `db-${item.id}-${++tempIdCounter}`,
+          name: item.name,
           price: item.price,
-          sideDishes: item.sideDishes,
-        }))
-      )
+          sideDishes: item.sideDishes ?? '',
+        })),
+      );
     }
-  }, [data?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [data?.status, data?.status === 'exists' ? data.menu.id : null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Đang tải thực đơn...</p>
+    return <p className="py-12 text-center text-sm text-muted-foreground">Đang tải thực đơn...</p>;
   }
 
   if (isError || !data) {
-    return <p className="py-12 text-center text-sm text-red-500">Không thể tải thực đơn hôm nay.</p>
+    return <p className="py-12 text-center text-sm text-red-500">Không thể tải thực đơn hôm nay.</p>;
   }
 
   if (data.status === 'prefill') {
     return (
       <div>
         <MenuHeader status="prefill" menu={null} date={PAGE_DATE} />
-        <MenuDraftItemList />
+        <MenuTable />
       </div>
-    )
+    );
   }
 
-  const { menu } = data
-  const status = menu.isLocked ? 'locked' : 'published'
+  const { menu } = data;
+  const status = menu.isLocked ? 'locked' : 'published';
 
   return (
     <div>
       <MenuHeader status={status} menu={menu} date={new Date(menu.date)} />
-      <MenuPublishedItemList menu={menu} isReadOnly={menu.isLocked} />
+      {menu.isLocked ? <MenuTableReadonly items={menu.items} /> : <MenuTable />}
       {menu.isLocked && <MenuKitchenSummary />}
     </div>
-  )
+  );
 }

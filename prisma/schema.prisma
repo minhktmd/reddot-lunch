@@ -22,16 +22,6 @@ model Employee {
   @@map("employees")
 }
 
-model MenuItem {
-  id             String          @id @default(cuid())
-  name           String
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  menuOfDayItems MenuOfDayItem[]
-
-  @@map("menu_items")
-}
-
 model MenuOfDay {
   id          String          @id @default(cuid())
   date        DateTime        @unique // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
@@ -49,12 +39,12 @@ model MenuOfDayItem {
   id          String    @id @default(cuid())
   menuOfDayId String
   menuOfDay   MenuOfDay @relation(fields: [menuOfDayId], references: [id], onDelete: Cascade)
-  menuItemId  String
-  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id])
-  price       Int // VND
+  name        String    // dish name stored directly — no FK to a catalog entity
+  price       Int       // VND integer (e.g. 45000)
   sideDishes  String?
   orders      Order[]
 
+  @@unique([menuOfDayId, name])
   @@map("menu_of_day_items")
 }
 

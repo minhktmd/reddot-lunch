@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -36,10 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       include: {
         menuOfDay: { select: { date: true } },
         menuOfDayItem: {
-          select: {
-            price: true,
-            menuItem: { select: { name: true } },
-          },
+          select: { name: true, price: true },
         },
       },
       orderBy: { menuOfDay: { date: 'asc' } },
@@ -47,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const result = orders.map((order) => ({
       date: order.menuOfDay.date.toISOString(),
-      menuItemName: order.menuOfDayItem.menuItem.name,
+      menuItemName: order.menuOfDayItem.name,
       quantity: order.quantity,
       unitPrice: order.menuOfDayItem.price,
       subtotal: order.quantity * order.menuOfDayItem.price,

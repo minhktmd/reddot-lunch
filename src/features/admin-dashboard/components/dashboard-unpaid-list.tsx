@@ -1,5 +1,6 @@
-import type { EmployeePayment } from '../types/admin-dashboard.type';
 import { formatPrice } from '@/shared/utils/format';
+
+import type { EmployeePayment } from '../types/admin-dashboard.type';
 
 type Props = {
   employees: EmployeePayment[];

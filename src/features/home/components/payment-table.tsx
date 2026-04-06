@@ -1,6 +1,7 @@
 'use client';
 
 import { formatPrice, formatDate } from '@/shared/utils/format';
+
 import type { UnpaidOrderItem } from '../types/order.type';
 
 type PaymentTableProps = {
@@ -27,7 +28,7 @@ export function PaymentTable({ orders }: PaymentTableProps) {
             {orders.map((order) => (
               <tr key={order.id} className="border-b last:border-0">
                 <td className="px-4 py-2 text-muted-foreground">{formatDate(order.menuOfDay.date)}</td>
-                <td className="px-4 py-2 text-foreground">{order.menuOfDayItem.menuItem.name}</td>
+                <td className="px-4 py-2 text-foreground">{order.menuOfDayItem.name}</td>
                 <td className="px-4 py-2 text-foreground">{order.quantity}</td>
                 <td className="px-4 py-2 text-foreground">{formatPrice(order.menuOfDayItem.price)}</td>
                 <td className="px-4 py-2 font-medium text-foreground">

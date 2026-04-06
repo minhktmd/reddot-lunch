@@ -6,6 +6,11 @@
 
 **Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
+> ⚠️ **Infrastructure constraint:** The app runs on **Supabase free tier** which has significant cold-start and connection latency — typically **3–4 seconds per API request**. This is a hard constraint that shapes many design decisions. Key rules that follow from this:
+> - **Never trigger an API call per user action in menu editing** — buffer all changes in the Zustand store and batch into a single request on explicit save/publish
+> - **Prefer batch operations** over sequential requests anywhere in the codebase
+> - When in doubt: fewer round-trips is always better
+
 ---
 
 ## Tech Stack
@@ -53,7 +58,7 @@ Read in this order for full context:
 2. **`docs/OVERVIEW.md`** — Structured product overview: domain model, feature map, API routes
 3. **`docs/domains/<domain>.md`** — Shared domain knowledge (read the domain relevant to your task)
    - `docs/domains/employee.md` — Employee entity, role constants, identity (no auth)
-   - `docs/domains/menu.md` — MenuItem, MenuOfDay, MenuOfDayItem, lifecycle, timezone helpers
+   - `docs/domains/menu.md` — MenuOfDay, MenuOfDayItem, lifecycle, timezone helpers, batch editing pattern
    - `docs/domains/order.md` — Order, auto order, payment flow, cron
 4. **`src/features/<feature>/SPEC.md`** — Feature-specific detail: screens, API contracts, business rules
 
@@ -73,8 +78,7 @@ src/
 │   │   ├── menu/page.tsx       → F3: Menu management
 │   │   ├── settings/page.tsx   → F4: App settings
 │   │   ├── employees/page.tsx  → F5: Employee management
-│   │   ├── report/page.tsx     → F6: Monthly report
-│   │   └── menu-items/page.tsx → F8: MenuItem management
+│   │   └── report/page.tsx     → F6: Monthly report
 │   └── api/                    → All API route handlers
 │
 ├── features/                   → See "Feature Structure" below
@@ -171,13 +175,12 @@ app/ → features/ → domains/ → shared/
 - ❌ Create a new shared component for something used in only one feature
 - ❌ Prop drilling beyond 2 levels — lift state to context or a state manager
 - ❌ Direct DOM manipulation (`document.querySelector`...) — use `ref` instead
-- ❌ Build custom atom components (Select, Checkbox, Dialog, Tabs, etc.) when a shadcn/ui component exists — always run `pnpm dlx shadcn@latest add <component>` first, then import from `@/components/ui/<component>`
 
 **TypeScript:**
 
 - ❌ Use `any` — use `unknown` + type guards
 - ❌ Use `Promise<any>` as a service return type — use `Promise<void>` or a typed interface
-- ❌ Use TypeScript `enum` — use `as const` + derived type (see `docs/domains/employee.md` for example)
+- ❌ Use TypeScript `enum` — use `as const` + derived type
 - ❌ Use type assertion (`as SomeType`) to silence TypeScript — fix the type instead; only acceptable when narrowing from `unknown` after validation
 - ❌ Access `process.env` directly — use `config/env.ts`
 - ❌ Ignore error types from API responses
@@ -196,12 +199,19 @@ app/ → features/ → domains/ → shared/
 - ❌ Leave `console.log` in committed code — use the logger or remove debug statements
 - ❌ Silently swallow errors in `catch` blocks — always at minimum `logger.error` them
 
+**Performance (critical — Supabase free tier has 3–4s latency):**
+
+- ❌ Trigger API calls per user action in menu editing — all edits are store-only until explicit save/publish
+- ❌ Use sequential `await` calls when parallel `Promise.all` would work
+- ❌ Create separate API endpoints for operations that can be batched into one
+
 **Project-specific:**
 
 - ❌ Use raw `new Date()` for date boundary logic — use `getTodayUTC()` from `src/domains/menu/lib/date.ts`
-- ❌ Hard-delete employees or menu items — always soft delete (`isActive = false`)
+- ❌ Hard-delete employees or menu items — always soft delete (`isActive = false`) for employees
 - ❌ Insert `AppConfig` — always upsert with `where: { id: "singleton" }`
 - ❌ Use `Promise.all` for fan-out Slack DMs — use `Promise.allSettled` so one failure doesn't block others
+- ❌ Reference `MenuItem` — that entity does not exist in this project; dish names are stored directly on `MenuOfDayItem.name`
 
 ---
 
@@ -259,7 +269,7 @@ app/ → features/ → domains/ → shared/
 | `services/` | `[resource].service.ts`      | `order.service.ts`, `menu.service.ts`            |
 | `types/`    | `[resource].type.ts`         | `order.type.ts`, `menu.type.ts`                  |
 | `hooks/`    | `use-[action]-[resource].ts` | `use-today-orders.ts`, `use-publish-menu.ts`     |
-| `components/` | `[feature]-[role].tsx`     | `order-list.tsx`, `menu-item-row.tsx`            |
+| `components/` | `[feature]-[role].tsx`     | `order-list.tsx`, `menu-table-row.tsx`           |
 | `stores/`   | `[resource].store.ts`        | `home.store.ts`, `menu-draft.store.ts`           |
 
 **Schemas vs Types:**
@@ -270,7 +280,6 @@ app/ → features/ → domains/ → shared/
 
 ### Components
 
-- Always prefer shadcn/ui components over raw HTML elements for any interactive UI element. Before building a UI component, check shadcn/ui first. If it exists, install it with `pnpm dlx shadcn@latest add <component-name>`. shadcn/ui components live in `src/components/ui/` — always import from there.
 - Component > 200 lines → extract sub-components
 - Generic UI with no business logic → `shared/components/`
 - UI tied to domain data, used by 2+ features → `domains/<domain>/components/`
@@ -305,7 +314,7 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 - Client state (UI state) → Zustand or `useState`
 - Form state → React Hook Form + Zod resolver
 - `selectedEmployeeId` persisted in `localStorage` — managed by `useHomeStore` in `features/home`
-- Pre-publish menu draft (item list before publish) — managed by `useMenuDraftStore` in `features/menu-management`
+- Menu draft (all edits before publish or save) — managed by `useMenuDraftStore` in `features/menu-management`; never write to DB per edit action
 
 **Zustand store rules:**
 
@@ -326,6 +335,7 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 - **Mutations:** call `queryClient.invalidateQueries({ queryKey: queryKeys.x.all })` after every mutation
 - **Query keys:** use the centralized factory in `shared/constants/query-keys.ts` — never write inline string arrays
 - **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s (`refetchInterval: 30_000`)
+- **Batch writes:** menu editing never triggers per-action API calls — all buffered in store, saved in one request
 
 → Use skill `service-pattern` for base service boilerplate, safeParse pattern, and mutation boilerplate
 
@@ -354,14 +364,96 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 
 - Always import from `@/shared/lib/prisma` — never instantiate `PrismaClient` directly in features
 - `AppConfig`: always `upsert` with `where: { id: "singleton" }` — never `create`
-- Soft delete: always set `isActive = false` — never `delete` employees or menu items
+- Soft delete for employees: always set `isActive = false` — never `delete`
 - Timezone: always use `getTodayUTC()` from `src/domains/menu/lib/date.ts` for date boundaries
+- There is **no `MenuItem` model** — do not create or reference one
 
 ### Price & Date Formatting
 
 - **Prices:** display as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`) — store as integer VND
 - **Dates:** display as `dd/MM/yyyy` (e.g. `04/04/2026`)
 - **Time:** display as `HH:mm` (e.g. `13:30`)
+
+---
+
+## Prisma Schema
+
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model AppConfig {
+  id        String   @id @default("singleton")
+  qrCodeUrl String?
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  slackId   String?
+  role      String   @default("member")  // "admin" | "member"
+  autoOrder Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  orders    Order[]
+
+  @@map("employees")
+}
+
+model MenuOfDay {
+  id          String          @id @default(cuid())
+  date        DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished Boolean         @default(false)
+  isLocked    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       MenuOfDayItem[]
+  orders      Order[]
+
+  @@map("menu_of_days")
+}
+
+model MenuOfDayItem {
+  id          String    @id @default(cuid())
+  menuOfDayId String
+  menuOfDay   MenuOfDay @relation(fields: [menuOfDayId], references: [id], onDelete: Cascade)
+  name        String    // dish name stored directly — no FK to a catalog entity
+  price       Int       // VND integer (e.g. 45000)
+  sideDishes  String?   // free text, e.g. "Nộm, canh bầu"
+  orders      Order[]
+
+  @@unique([menuOfDayId, name])
+  @@map("menu_of_day_items")
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  menuOfDayId       String
+  menuOfDay         MenuOfDay     @relation(fields: [menuOfDayId], references: [id])
+  employeeId        String
+  employee          Employee      @relation(fields: [employeeId], references: [id])
+  menuOfDayItemId   String
+  menuOfDayItem     MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
+  quantity          Int           @default(1)
+  isAutoOrder       Boolean       @default(false)
+  isPaid            Boolean       @default(false)
+  paidAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("orders")
+}
+```
 
 ---
 
@@ -380,19 +472,6 @@ Format: `<type>(<scope>): <description>`
 | `test`     | Adding or updating tests                     |
 | `perf`     | Performance improvement                      |
 
-**Rules:**
-
-- `scope`: optional, kebab-case feature or module name (`home`, `menu`, `order`, `employee`)
-- `description`: imperative mood, lowercase, no trailing period ("add" not "added")
-- Breaking change: append `!` after type — `feat!: change publish API contract`
-
-```bash
-feat(home): add order form with optimistic UI
-fix(menu): handle empty prefill when no previous menu exists
-refactor(order): extract auto order logic to domain service
-chore: update prisma to v6
-```
-
 ---
 
 ## Feature Map (Quick Reference)
@@ -406,7 +485,8 @@ chore: update prisma to v6
 | F5 | Employee Management  | `/admin/employees`   | employee          | Planned |
 | F6 | Monthly Report       | `/admin/report`      | order, employee   | Planned |
 | F7 | Slack Notifications  | events + cron        | order, menu       | Planned |
-| F8 | MenuItem Management  | `/admin/menu-items`  | menu              | Planned |
+
+Note: F8 (MenuItem Management) has been removed — there is no dish catalog.
 
 ---
 
@@ -431,7 +511,7 @@ chore: update prisma to v6
 | `vercel-composition-patterns` | Designing shared components                                                          |
 | `next-best-practices`         | Next.js file conventions, RSC boundaries, async APIs, metadata, image/font, bundling |
 
-`features/*/index.ts` and `domains/*/index.ts` are **public API boundaries** — not barrel anti-patterns. Anti-patterns to avoid: re-exporting everything from `shared/` root, or importing icon/component libraries through their index.
+`features/*/index.ts` and `domains/*/index.ts` are **public API boundaries** — not barrel anti-patterns.
 
 ---
 
@@ -441,3 +521,4 @@ chore: update prisma to v6
 - **Need shared code:** Check `domains/*/index.ts` and `shared/` before writing anything new
 - **Timezone bug:** always trace back to `getTodayUTC()` — never trust raw `new Date()`
 - **Slack not sending:** check `slackId` is set, log error but do not fail the parent operation
+- **Tempted to call API per edit:** don't — buffer in store, batch on save

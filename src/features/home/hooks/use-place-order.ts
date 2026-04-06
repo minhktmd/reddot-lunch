@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 
 import { queryKeys } from '@/shared/constants/query-keys';
 import { getTodayVNDateString } from '@/shared/utils/format';
+
 import { placeOrder } from '../services/order.service';
+
 import type { OrderItem } from '../types/order.type';
 import type { TodayMenuResponse } from '@/domains/menu';
 
@@ -30,9 +32,9 @@ export function usePlaceOrder(employeeId: string) {
       const menuItems = menuData?.status === 'exists' ? menuData.menu.items : [];
       const menuOfDayItem = menuItems.find((item) => item.id === variables.menuOfDayItemId) ?? {
         id: variables.menuOfDayItemId,
+        name: '...',
         price: 0,
         sideDishes: null,
-        menuItem: { id: '', name: '...' },
       };
 
       const optimistic: OrderItem = {

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { formatPrice } from '@/shared/utils/format';
+
 import type { MenuOfDayItemResponse } from '@/domains/menu';
 
 type OrderMenuCardProps = {
@@ -22,7 +23,7 @@ export function OrderMenuCard({ item, isLocked, isLoading, onPlaceOrder }: Order
     <div className="rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="font-medium text-foreground">{item.menuItem.name}</p>
+          <p className="font-medium text-foreground">{item.name}</p>
           {item.sideDishes && <p className="mt-0.5 text-sm text-muted-foreground">{item.sideDishes}</p>}
         </div>
         <span className="shrink-0 font-semibold text-blue-600">{formatPrice(item.price)}</span>

@@ -8,9 +8,9 @@ export const orderItemSchema = z.object({
   paidAt: z.string().nullable(),
   menuOfDayItem: z.object({
     id: z.string(),
+    name: z.string(),
     price: z.number(),
     sideDishes: z.string().nullable(),
-    menuItem: z.object({ id: z.string(), name: z.string() }),
   }),
 });
 
@@ -23,8 +23,8 @@ export const unpaidOrderItemSchema = z.object({
   menuOfDay: z.object({ id: z.string(), date: z.string() }),
   menuOfDayItem: z.object({
     id: z.string(),
+    name: z.string(),
     price: z.number(),
-    menuItem: z.object({ id: z.string(), name: z.string() }),
   }),
 });
 

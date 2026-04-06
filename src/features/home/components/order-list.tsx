@@ -84,14 +84,14 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                         <SelectContent>
                           {menuItems.map((item) => (
                             <SelectItem key={item.id} value={item.id}>
-                              {item.menuItem.name} — {formatPrice(item.price)}
+                              {item.name} — {formatPrice(item.price)}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     ) : (
                       <div>
-                        <span className="text-foreground">{order.menuOfDayItem.menuItem.name}</span>
+                        <span className="text-foreground">{order.menuOfDayItem.name}</span>
                         {order.isAutoOrder && (
                           <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">tự động</span>
                         )}

@@ -1,11 +1,10 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-import { formatPrice } from '@/shared/utils/format';
 import {
   Select,
   SelectContent,
@@ -13,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/atoms/select';
+import { formatPrice } from '@/shared/utils/format';
+
 import type { MenuOfDayItemResponse } from '@/domains/menu';
 
 const orderFormSchema = z.object({
@@ -76,7 +77,7 @@ export function OrderForm({
             <SelectContent>
               {menuItems.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
-                  {item.menuItem.name} — {formatPrice(item.price)}
+                  {item.name} — {formatPrice(item.price)}
                 </SelectItem>
               ))}
             </SelectContent>

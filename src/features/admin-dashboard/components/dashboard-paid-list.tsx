@@ -1,8 +1,9 @@
 'use client';
 
-import type { EmployeePayment } from '../types/admin-dashboard.type';
 import { Button } from '@/shared/components/atoms/button';
 import { formatPrice, formatTime } from '@/shared/utils/format';
+
+import type { EmployeePayment } from '../types/admin-dashboard.type';
 
 type Props = {
   employees: EmployeePayment[];
@@ -23,7 +24,7 @@ export function DashboardPaidList({ employees, onUnpay, isUnpaying }: Props) {
             <th className="pb-2 font-medium">Tên</th>
             <th className="pb-2 text-right font-medium">Số tiền</th>
             <th className="pb-2 text-center font-medium">Thời gian</th>
-            <th className="pb-2 font-medium"></th>
+            <th className="pb-2 font-medium" />
           </tr>
         </thead>
         <tbody>

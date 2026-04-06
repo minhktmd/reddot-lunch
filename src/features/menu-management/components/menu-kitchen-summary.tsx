@@ -16,7 +16,7 @@ export function MenuKitchenSummary() {
 
   // Aggregate by dish name
   const summary = orders.reduce<Record<string, number>>((acc, order) => {
-    const name = order.menuOfDayItem.menuItem.name
+    const name = order.menuOfDayItem.name
     acc[name] = (acc[name] ?? 0) + order.quantity
     return acc
   }, {})

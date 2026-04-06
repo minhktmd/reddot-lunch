@@ -1,9 +1,9 @@
-export { getTodayUTC, parseDateParam } from './lib/date'
+export { getTodayUTC, parseDateParam } from './lib/date';
 export type {
   MenuOfDayItemResponse,
   MenuOfDayResponse,
   PrefillItem,
   TodayMenuResponse,
-  MenuItemCatalogItem,
+  MenuSuggestion,
   TodayOrderItem,
-} from './types/menu.type'
+} from './types/menu.type';

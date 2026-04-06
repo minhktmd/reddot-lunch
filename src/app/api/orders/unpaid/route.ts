@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,9 +16,7 @@ export async function GET(request: NextRequest) {
       where: { employeeId, isPaid: false },
       include: {
         menuOfDay: { select: { id: true, date: true } },
-        menuOfDayItem: {
-          include: { menuItem: { select: { id: true, name: true } } },
-        },
+        menuOfDayItem: true,
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -34,10 +32,10 @@ export async function GET(request: NextRequest) {
         },
         menuOfDayItem: {
           id: order.menuOfDayItem.id,
+          name: order.menuOfDayItem.name,
           price: order.menuOfDayItem.price,
-          menuItem: order.menuOfDayItem.menuItem,
         },
-      }))
+      })),
     );
   } catch (error) {
     logger.error('[GET /api/orders/unpaid]', error);

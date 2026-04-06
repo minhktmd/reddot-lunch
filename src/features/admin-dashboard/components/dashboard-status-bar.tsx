@@ -1,8 +1,9 @@
 'use client';
 
-import type { MenuOfDayResponse } from '@/domains/menu';
 import { Button } from '@/shared/components/atoms/button';
 import { formatDateFull } from '@/shared/utils/format';
+
+import type { MenuOfDayResponse } from '@/domains/menu';
 
 type Props = {
   menu: MenuOfDayResponse;

@@ -1,50 +1,48 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
 
-import { type DraftItem } from '../types/menu-management.type'
+import { type MenuSuggestion } from '@/domains/menu';
+
+import { type DraftItem } from '../types/menu-management.type';
 
 type MenuDraftStore = {
-  items: DraftItem[]
-  publishError: string
-  setItems: (items: DraftItem[]) => void
-  addItem: (item: Omit<DraftItem, 'tempId'>) => void
-  editItem: (tempId: string, patch: Partial<Omit<DraftItem, 'tempId'>>) => void
-  removeItem: (tempId: string) => void
-  setPublishError: (error: string) => void
-  reset: () => void
-}
+  items: DraftItem[];
+  hasUnsavedChanges: boolean;
+  suggestions: MenuSuggestion[];
+
+  setSuggestions: (suggestions: MenuSuggestion[]) => void;
+  setItems: (items: DraftItem[]) => void;
+  updateItem: (tempId: string, patch: Partial<Omit<DraftItem, 'tempId'>>) => void;
+  removeItem: (tempId: string) => void;
+  markSaved: () => void;
+  reset: () => void;
+};
 
 const initialState = {
   items: [] as DraftItem[],
-  publishError: '',
-}
-
-let tempIdCounter = 0
+  hasUnsavedChanges: false,
+  suggestions: [] as MenuSuggestion[],
+};
 
 export const useMenuDraftStore = create<MenuDraftStore>((set) => ({
   ...initialState,
 
-  setItems: (items) => set({ items }),
+  setSuggestions: (suggestions) => set({ suggestions }),
 
-  addItem: (item) =>
-    set((state) => ({
-      items: [
-        ...state.items,
-        { ...item, tempId: `draft-${++tempIdCounter}-${Date.now()}` },
-      ],
-      publishError: '',
-    })),
+  setItems: (items) => set({ items, hasUnsavedChanges: false }),
 
-  editItem: (tempId, patch) =>
+  updateItem: (tempId, patch) =>
     set((state) => ({
       items: state.items.map((item) => (item.tempId === tempId ? { ...item, ...patch } : item)),
+      hasUnsavedChanges: true,
     })),
 
   removeItem: (tempId) =>
     set((state) => ({
       items: state.items.filter((item) => item.tempId !== tempId),
+      hasUnsavedChanges: true,
     })),
 
-  setPublishError: (publishError) => set({ publishError }),
+  markSaved: () => set({ hasUnsavedChanges: false }),
 
   reset: () => set(initialState),
-}))
+}));

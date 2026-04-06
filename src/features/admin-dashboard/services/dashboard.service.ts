@@ -1,19 +1,19 @@
 import { z } from 'zod';
 
-import type { TodayMenuResponse, MenuOfDayResponse } from '@/domains/menu';
-import { apiClient } from '@/shared/services/api';
 import { logger } from '@/shared/lib/logger';
+import { apiClient } from '@/shared/services/api';
+
 import { todayAdminOrderSchema, type TodayAdminOrder } from '../types/admin-dashboard.type';
+
+import type { TodayMenuResponse, MenuOfDayResponse } from '@/domains/menu';
 
 // ─── Menu ────────────────────────────────────────────────────────────────────
 
-const menuItemSchema = z.object({ id: z.string(), name: z.string() });
-
 const menuOfDayItemSchema = z.object({
   id: z.string(),
+  name: z.string(),
   price: z.number(),
   sideDishes: z.string().nullable(),
-  menuItem: menuItemSchema,
 });
 
 const menuOfDaySchema = z.object({
@@ -25,8 +25,7 @@ const menuOfDaySchema = z.object({
 });
 
 const prefillItemSchema = z.object({
-  menuItemId: z.string(),
-  menuItemName: z.string(),
+  name: z.string(),
   price: z.number(),
   sideDishes: z.string().nullable(),
 });

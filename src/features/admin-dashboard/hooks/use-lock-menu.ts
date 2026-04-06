@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { queryKeys } from '@/shared/constants/query-keys';
+
 import { lockMenu } from '../services/dashboard.service';
 
 export function useLockMenu() {

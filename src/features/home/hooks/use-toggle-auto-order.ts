@@ -3,8 +3,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { queryKeys } from '@/shared/constants/query-keys';
 import { updateEmployee } from '@/domains/employee';
+import { queryKeys } from '@/shared/constants/query-keys';
+
 import type { EmployeeListItem } from '@/domains/employee';
 
 export function useToggleAutoOrder(employeeId: string) {

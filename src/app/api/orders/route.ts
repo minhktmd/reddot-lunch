@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { parseDateParam } from '@/domains/menu';
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 
 const createOrderSchema = z.object({
   employeeId: z.string().min(1),
@@ -31,13 +31,7 @@ export async function GET(request: NextRequest) {
 
     const orders = await prisma.order.findMany({
       where: { menuOfDayId: menuOfDay.id, employeeId },
-      include: {
-        menuOfDayItem: {
-          include: {
-            menuItem: { select: { id: true, name: true } },
-          },
-        },
-      },
+      include: { menuOfDayItem: true },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -50,9 +44,9 @@ export async function GET(request: NextRequest) {
         paidAt: order.paidAt?.toISOString() ?? null,
         menuOfDayItem: {
           id: order.menuOfDayItem.id,
+          name: order.menuOfDayItem.name,
           price: order.menuOfDayItem.price,
           sideDishes: order.menuOfDayItem.sideDishes,
-          menuItem: order.menuOfDayItem.menuItem,
         },
       }))
     );
@@ -75,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     const menuOfDayItem = await prisma.menuOfDayItem.findUnique({
       where: { id: menuOfDayItemId },
-      include: { menuOfDay: true, menuItem: { select: { id: true, name: true } } },
+      include: { menuOfDay: true },
     });
 
     if (!menuOfDayItem) {
@@ -93,11 +87,7 @@ export async function POST(request: NextRequest) {
         menuOfDayItemId,
         quantity,
       },
-      include: {
-        menuOfDayItem: {
-          include: { menuItem: { select: { id: true, name: true } } },
-        },
-      },
+      include: { menuOfDayItem: true },
     });
 
     return NextResponse.json(
@@ -109,9 +99,9 @@ export async function POST(request: NextRequest) {
         paidAt: order.paidAt?.toISOString() ?? null,
         menuOfDayItem: {
           id: order.menuOfDayItem.id,
+          name: order.menuOfDayItem.name,
           price: order.menuOfDayItem.price,
           sideDishes: order.menuOfDayItem.sideDishes,
-          menuItem: order.menuOfDayItem.menuItem,
         },
       },
       { status: 201 }

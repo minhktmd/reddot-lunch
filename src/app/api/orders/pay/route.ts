@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 
 const payAllSchema = z.object({
   employeeId: z.string().min(1),

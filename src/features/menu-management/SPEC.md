@@ -3,6 +3,8 @@
 > Admin page for creating and managing the daily menu.
 > Domain knowledge → `docs/domains/menu.md`, `docs/domains/order.md`.
 > Route: `/admin/menu`
+>
+> ⚠️ **Latency note:** The app runs on Supabase free tier with 3–4s API latency. All menu editing must happen in the Zustand store first. DB writes happen only on explicit "Đăng thực đơn" or "Lưu thay đổi" actions — never per row edit.
 
 ---
 
@@ -10,13 +12,13 @@
 
 Admin uses this page daily to:
 
-1. Review today's menu — pre-populated from the previous day automatically
-2. Add, edit, or remove meal portions if needed
-3. Publish the menu → Slack fires, employees can order, auto orders are created
-4. Lock orders when ready to send to kitchen (chốt sổ)
+1. View today's menu — starts empty with autocomplete suggestions loaded from history
+2. Edit the menu inline (spreadsheet-style) — all changes are local, no API calls
+3. Publish the menu → single DB write, Slack fires, employees can order, auto orders created
+4. Lock orders when ready to send to kitchen
 5. Unlock if changes are needed
 
-**Key principle:** nothing is written to DB until admin clicks "Đăng thực đơn". The UI is pre-populated from the previous day's menu and admin edits it freely before publishing.
+**Key principle:** The table is always editable inline. There is always one empty row at the bottom. All edits are store-only until admin explicitly saves.
 
 ---
 
@@ -24,65 +26,75 @@ Admin uses this page daily to:
 
 ### Screen 1 — Pre-publish (no MenuOfDay exists yet for today)
 
-Shown when `GET /api/menu/today` returns `{ status: "prefill", items: [...] }`.
+Shown when `GET /api/menu/today` returns `{ status: "no-menu" }`.
 
 **Header:**
-- Date: `Thứ Tư, 04/04/2026`
-- Status badge: `Chưa đăng` (grey)
-- "Đăng thực đơn" button (primary)
-
-**Meal portions list:**
-
-Pre-populated from previous day's items. Visually identical to an editable menu — admin may not even notice the difference.
-
-| Món | Giá | Món ăn kèm | |
-|---|---|---|---|
-| Cơm gà Hội An | 45.000đ | Nộm, canh bầu | [Sửa] [Xóa] |
-| Phở gà HN | 45.000đ | Quẩy, hoa quả | [Sửa] [Xóa] |
-
-- All edits (add/edit/remove) are **UI state only** — no API calls until publish
-- If `prefill.items` is empty (no previous menu) → show empty list with only the add form
-
-**Add dish form (always visible below the list):**
-
 ```
-[Autocomplete: tên món...] [Giá] [Món ăn kèm] [Thêm]
+Thứ Tư, 04/04/2026   [Chưa đăng]   [Đăng thực đơn]
 ```
 
-- Autocomplete searches active `MenuItem` catalog (case-insensitive)
-- Selecting existing dish → auto-fills `price` and `sideDishes` from `MenuItem.lastUsed`
-- Typing new name with no match → treated as new dish, fields left empty
-- On "Thêm": adds to UI list only — no API call
+**Menu table — spreadsheet-style inline editing:**
+
+```
+| Tên món              | Giá        | Món ăn kèm              |       |
+|----------------------|------------|-------------------------|-------|
+| Cơm gà Hội An        | 45.000     | Nộm, canh bầu           | [Xóa] |
+| Phở gà HN            | 45.000     | Quẩy, hoa quả           | [Xóa] |
+| ________________     | _______    | _____________________   |       |  ← empty row
+```
+
+Rules:
+- Table starts with just the empty row (no prefill from previous day — see Autocomplete section)
+- Every cell is directly editable — click to edit, no separate "Sửa" button
+- Always one empty row at the bottom
+- When admin types a dish name in the empty row → a new empty row appears below it automatically
+- **Auto-fill on new row:** when a new row is created (admin types in the empty row), its `price` and `sideDishes` are automatically copied from the row immediately above it. If there is no row above (first row), they default to empty. This saves repeated input since dishes on the same day usually share the same price and side dishes.
+- [Xóa] button removes that row (with confirmation if the row has content)
+- All changes are **store-only** — zero API calls until publish
+
+**Publish flow:**
+1. Validate: at least one row with non-empty name and price > 0 — show inline error if not
+2. Confirm dialog: `"Đăng thực đơn và thông báo Slack?"`
+3. `POST /api/menu/publish` with full item list — single request
+4. Server atomically: creates `MenuOfDay` + all `MenuOfDayItem` records + auto orders + Slack
+5. UI transitions to Screen 2
 
 ---
 
 ### Screen 2 — Published (MenuOfDay exists, isLocked = false)
 
 **Header:**
-- Status badge: `Đã đăng` (green)
-- "Chốt sổ" button (primary)
+```
+Thứ Tư, 04/04/2026   [Đã đăng]   [Lưu thay đổi]   [Chốt sổ]
+```
 
-**Meal portions list:** editable — add/edit/remove each call API immediately (no buffering).
+"Lưu thay đổi" button is only shown when `hasUnsavedChanges = true` in the store.
 
-- **Sửa**: inline edit → `PATCH /api/menu/[id]` with `{ action: "edit", ... }`
-- **Xóa**: confirm → `PATCH /api/menu/[id]` with `{ action: "remove", ... }` — blocked if item has orders
-- **Add form**: same as Screen 1 but each submit calls `PATCH /api/menu/[id]` with `{ action: "add", ... }` immediately
+**Menu table:** same spreadsheet-style as Screen 1 — fully editable inline, empty row at bottom.
+
+When admin makes any change (edit a cell, add a row, delete a row) → `hasUnsavedChanges = true` → "Lưu thay đổi" button appears.
+
+**Save flow ("Lưu thay đổi"):**
+1. `PATCH /api/menu/[id]/items` with full current item list — single request
+2. Server diffs: deletes removed items (blocked if they have orders), upserts remaining
+3. If any items cannot be deleted because they have orders → return 409 with list of blocked dish names → show error toast: `"Không thể xóa: [tên món] đã có đơn hàng"`
+4. On success: `hasUnsavedChanges = false`, button disappears
 
 ---
 
 ### Screen 3 — Locked (isLocked = true)
 
 **Header:**
-- Status badge: `Đã chốt` (red)
-- "Mở lại" button (secondary)
+```
+Thứ Tư, 04/04/2026   [Đã chốt]   [Mở lại]
+```
 
-**Meal portions list:** read-only, no edit/delete actions.
+**Menu table:** read-only. No empty row. No [Xóa] buttons. Cells are not editable.
 
 **Kitchen summary box:**
-
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-Tóm tắt đơn hàng hôm nay
+Tóm tắt gửi bếp
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 Cơm gà Hội An       x 5
 Cơm thịt kho tàu    x 3
@@ -91,57 +103,65 @@ Phở gà HN           x 2
 Tổng: 10 suất
 ```
 
-- "Sao chép" button → copies summary text to clipboard
-- Computed from all orders for today grouped by dish name + summed quantity
+"Sao chép" button → copies summary text to clipboard.
+Computed from all orders for today grouped by dish name + summed quantity.
 
 ---
 
-## Publish Flow (admin clicks "Đăng thực đơn")
+## Autocomplete Behavior
 
-1. Validate: list must have at least one item — show inline error if empty
-2. Confirm dialog: `"Đăng thực đơn và thông báo Slack?"` → confirm
-3. `POST /api/menu/publish` with full item list from UI state
-4. Server atomically:
-   - Creates `MenuOfDay` for today
-   - Looks up or creates `MenuItem` for each item name
-   - Creates all `MenuOfDayItem` records
-   - Sets `isPublished = true`
-   - Creates auto orders for eligible employees
-   - Posts Slack channel message
-   - Sends Slack DMs to auto-order employees
-5. UI transitions to Screen 2
+On page load, `GET /api/menu/suggestions` is called once. Response is stored in the Zustand store.
 
----
+```ts
+type MenuSuggestion = {
+  name: string
+  price: number  // from most recent occurrence in history
+}
+```
 
-## Lock Flow (admin clicks "Chốt sổ")
+When admin types in the dish name cell:
+- Filter suggestions client-side (case-insensitive contains match) — no additional API call
+- Show dropdown with matching suggestions
+- Selecting a suggestion auto-fills `name` and `price` in that row — `sideDishes` stays empty (admin fills manually each day)
+- If no match → admin can type any free-text name, no problem
 
-1. Confirm: `"Chốt sổ? Nhân viên sẽ không thể thay đổi đơn hàng."` → `POST /api/menu/[id]/lock`
-2. UI transitions to Screen 3 → kitchen summary box appears
+**`sideDishes` is intentionally NOT suggested** — side dishes change daily.
 
 ---
 
-## Unlock Flow (admin clicks "Mở lại")
+## Lock / Unlock Flow
 
-1. Confirm: `"Mở lại để nhân viên có thể chỉnh sửa đơn hàng?"` → `POST /api/menu/[id]/unlock`
-2. UI transitions to Screen 2
+**Lock ("Chốt sổ"):**
+1. If `hasUnsavedChanges` → warn: `"Có thay đổi chưa lưu. Lưu trước khi chốt?"` with [Lưu và chốt] / [Hủy]
+2. Confirm: `"Chốt sổ? Nhân viên sẽ không thể thay đổi đơn hàng."`
+3. `POST /api/menu/[id]/lock`
+4. UI transitions to Screen 3
+
+**Unlock ("Mở lại"):**
+1. Confirm: `"Mở lại để nhân viên có thể chỉnh sửa đơn hàng?"`
+2. `POST /api/menu/[id]/unlock`
+3. UI transitions to Screen 2
 
 ---
 
 ## User Stories
 
-- [ ] US1: Admin opens the page and sees today's menu pre-populated from the previous day
-- [ ] US2: Admin sees an empty list when no previous menu exists
-- [ ] US3: Admin can add a meal portion by selecting an existing dish — price and side dishes auto-filled
-- [ ] US4: Admin can add a meal portion by typing a new dish name
-- [ ] US5: Admin can edit price or side dishes of a meal portion
-- [ ] US6: Admin can remove a meal portion from the list
-- [ ] US7: Admin cannot publish an empty menu
-- [ ] US8: Admin publishes the menu — Slack notifications fire, auto orders created, UI shows Published state
-- [ ] US9: After publish, admin can still add/edit/remove meal portions via API
-- [ ] US10: Admin cannot delete a published meal portion that has existing orders
-- [ ] US11: Admin locks orders — kitchen summary appears with copyable text
-- [ ] US12: Admin can copy kitchen summary to clipboard
-- [ ] US13: Admin can unlock orders to allow changes
+- [ ] US1: Admin opens the page and sees an empty table with one empty row ready to fill
+- [ ] US2: Admin types a dish name and sees autocomplete suggestions from history
+- [ ] US3: Admin selects a suggestion — name and price auto-fill, sideDishes stays empty
+- [ ] US4: Admin types a dish name not in history — row is created with empty price/sideDishes
+- [ ] US5: Admin edits any cell inline — no API call is made
+- [ ] US6: A new empty row appears automatically when admin types in the last empty row
+- [ ] US7: Admin can delete any row with the [Xóa] button
+- [ ] US8: Admin cannot publish an empty menu — inline error shown
+- [ ] US9: Admin publishes the menu — single API call, Slack fires, auto orders created, UI shows Published
+- [ ] US10: After publish, admin can still edit the table inline — "Lưu thay đổi" button appears when changes exist
+- [ ] US11: Admin saves post-publish changes — single API call, all changes applied at once
+- [ ] US12: Admin cannot remove a dish that already has orders — error toast shows blocked dish names
+- [ ] US13: Admin locks orders — kitchen summary appears with copyable text
+- [ ] US14: Admin can copy kitchen summary to clipboard
+- [ ] US15: Admin can unlock orders to allow changes
+- [ ] US16: Unsaved changes warning shown if admin tries to lock with pending edits
 
 ---
 
@@ -150,14 +170,12 @@ Tổng: 10 suất
 | Action | Method | Endpoint | Body |
 |---|---|---|---|
 | Load today's menu | GET | `/api/menu/today` | — |
-| Load MenuItem catalog | GET | `/api/menu-items` | — |
-| Publish with items | POST | `/api/menu/publish` | `{ items: [{ menuItemName, price, sideDishes? }] }` |
-| Add item (post-publish) | PATCH | `/api/menu/[id]` | `{ action: "add", menuItemName, price, sideDishes? }` |
-| Edit item | PATCH | `/api/menu/[id]` | `{ action: "edit", menuOfDayItemId, price?, sideDishes? }` |
-| Remove item | PATCH | `/api/menu/[id]` | `{ action: "remove", menuOfDayItemId }` |
+| Load autocomplete suggestions | GET | `/api/menu/suggestions` | — |
+| Load today's orders (for kitchen summary) | GET | `/api/orders/today` | — |
+| Publish | POST | `/api/menu/publish` | `{ items: [{ name, price, sideDishes? }] }` |
+| Batch save post-publish changes | PATCH | `/api/menu/[id]/items` | `{ items: [{ name, price, sideDishes? }] }` |
 | Lock | POST | `/api/menu/[id]/lock` | — |
 | Unlock | POST | `/api/menu/[id]/unlock` | — |
-| Load today's orders | GET | `/api/orders/today` | — |
 
 ---
 
@@ -167,60 +185,74 @@ Tổng: 10 suất
 features/menu-management/
 ├── components/
 │   ├── menu-header.tsx              — Date, status badge, action buttons
-│   ├── menu-item-list.tsx           — List of items (UI state pre-publish, DB post-publish)
-│   ├── menu-item-row.tsx            — Single row: name, price, sideDishes, edit/delete
-│   ├── menu-item-row-edit.tsx       — Inline edit form for a row
-│   ├── menu-item-add-form.tsx       — Autocomplete + price + sideDishes + Thêm button
+│   ├── menu-table.tsx               — Spreadsheet-style table; manages empty row logic
+│   ├── menu-table-row.tsx           — Single editable row (name, price, sideDishes, delete)
+│   ├── menu-table-row-readonly.tsx  — Read-only row for locked state
+│   ├── menu-name-cell.tsx           — Name input with autocomplete dropdown
 │   ├── menu-publish-button.tsx      — "Đăng thực đơn" with confirm dialog
-│   ├── menu-lock-button.tsx         — "Chốt sổ" with confirm dialog
+│   ├── menu-save-button.tsx         — "Lưu thay đổi" — only shown when hasUnsavedChanges
+│   ├── menu-lock-button.tsx         — "Chốt sổ" with unsaved-changes guard + confirm dialog
 │   ├── menu-unlock-button.tsx       — "Mở lại" with confirm dialog
 │   ├── menu-kitchen-summary.tsx     — Aggregated order summary + copy button
 │   └── menu-status-badge.tsx        — Chưa đăng / Đã đăng / Đã chốt badge
 ├── hooks/
 │   ├── use-today-menu.ts            — GET /api/menu/today
-│   ├── use-menu-items.ts            — GET /api/menu-items (for autocomplete)
+│   ├── use-menu-suggestions.ts      — GET /api/menu/suggestions
 │   ├── use-publish-menu.ts          — POST /api/menu/publish
-│   ├── use-update-menu.ts           — PATCH /api/menu/[id]
+│   ├── use-save-menu-items.ts       — PATCH /api/menu/[id]/items
 │   ├── use-lock-menu.ts             — POST /api/menu/[id]/lock
 │   ├── use-unlock-menu.ts           — POST /api/menu/[id]/unlock
 │   └── use-today-orders.ts          — GET /api/orders/today (for kitchen summary)
 ├── stores/
-│   └── menu-draft.store.ts          — UI-only state: draft item list before publish
+│   └── menu-draft.store.ts          — All local editing state; see store shape below
 └── index.ts
 ```
 
 ---
 
-## State Management
-
-Before publish, the item list lives in `menu-draft.store.ts` (Zustand) — not in the DB.
+## State Management (`menu-draft.store.ts`)
 
 ```ts
 type DraftItem = {
-  tempId: string          // client-side only, used as React key
-  menuItemName: string
+  tempId: string        // client-only, used as React key, never sent to server
+  name: string
+  price: number         // integer VND (e.g. 45000), displayed as "45.000đ"
+  sideDishes: string    // empty string means no side dishes
+}
+
+type MenuSuggestion = {
+  name: string
   price: number
-  sideDishes: string | null
 }
 
 type MenuDraftStore = {
   items: DraftItem[]
-  setItems: (items: DraftItem[]) => void   // called on page load with prefill data
-  addItem: (item: Omit<DraftItem, "tempId">) => void
-  editItem: (tempId: string, patch: Partial<DraftItem>) => void
+  hasUnsavedChanges: boolean
+
+  suggestions: MenuSuggestion[]
+  setSuggestions: (suggestions: MenuSuggestion[]) => void
+
+  setItems: (items: DraftItem[]) => void          // called after publish/save to sync with DB
+  updateItem: (tempId: string, patch: Partial<Omit<DraftItem, 'tempId'>>) => void
   removeItem: (tempId: string) => void
-  reset: () => void                        // called after successful publish
+
+  markSaved: () => void   // sets hasUnsavedChanges = false
+  reset: () => void       // clears items, resets hasUnsavedChanges
 }
 ```
 
-After publish, all mutations go directly to API — draft store is no longer used.
+**Empty row:** rendered by `menu-table.tsx` — always appends one virtual empty row to the displayed list. When the user types a name into the empty row, the component:
+1. Calls `updateItem` on that row with `{ name, price: lastItem.price, sideDishes: lastItem.sideDishes }` — copying price and sideDishes from the last real item above
+2. Generates a new empty row below
+
+This is purely rendering logic, not store state. The auto-fill values come from the last item in `store.items` at the moment the name is first typed.
 
 ---
 
 ## Notes
 
-- **Autocomplete:** show suggestions after 1 character typed; if no match → show option `"Thêm món mới: {name}"` at bottom of list
-- **Confirm dialogs:** inline confirmation (button turns red + "Chắc chắn?") rather than modal — keeps flow fast for daily use
-- **Kitchen summary format:** plain text, tab-aligned — optimized for pasting into Zalo/Messenger to send to restaurant
-- **Price input:** integer only, no decimals — display as `45.000đ` but store as `45000`
-- **`MenuItem.lastUsed`** fields (`lastUsedPrice`, `lastUsedSideDishes`) are included in `GET /api/menu-items` response to enable auto-fill without extra API calls
+- **Price input:** integer only, no decimals — display as `45.000đ` but store as `45000`; use a numeric input that strips non-digit characters
+- **Inline confirm for delete:** clicking [Xóa] on a row with content → button turns red + text changes to "Chắc chắn?" for 3s → second click confirms; click elsewhere cancels
+- **Kitchen summary format:** plain text, space-aligned — optimized for pasting into Zalo/Messenger to send to restaurant
+- **Tab navigation:** pressing Tab in a row should move focus to the next cell, then to the next row's first cell
+- **`sideDishes` is intentionally empty after autocomplete** — never prefill from history; admin fills daily

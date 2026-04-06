@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { prisma } from '@/shared/lib/prisma';
 import { logger } from '@/shared/lib/logger';
+import { prisma } from '@/shared/lib/prisma';
 
 const updateOrderSchema = z.object({
   menuOfDayItemId: z.string().min(1).optional(),
@@ -42,11 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const updated = await prisma.order.update({
       where: { id },
       data: result.data,
-      include: {
-        menuOfDayItem: {
-          include: { menuItem: { select: { id: true, name: true } } },
-        },
-      },
+      include: { menuOfDayItem: true },
     });
 
     return NextResponse.json({
@@ -57,9 +53,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       paidAt: updated.paidAt?.toISOString() ?? null,
       menuOfDayItem: {
         id: updated.menuOfDayItem.id,
+        name: updated.menuOfDayItem.name,
         price: updated.menuOfDayItem.price,
         sideDishes: updated.menuOfDayItem.sideDishes,
-        menuItem: updated.menuOfDayItem.menuItem,
       },
     });
   } catch (error) {

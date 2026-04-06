@@ -2,9 +2,10 @@
 
 import { toast } from 'sonner';
 
-import type { TodayAdminOrder, MealSummaryItem } from '../types/admin-dashboard.type';
 import { Button } from '@/shared/components/atoms/button';
 import { formatPrice } from '@/shared/utils/format';
+
+import type { TodayAdminOrder, MealSummaryItem } from '../types/admin-dashboard.type';
 
 type Props = {
   orders: TodayAdminOrder[];
@@ -12,7 +13,7 @@ type Props = {
 
 function computeMealSummary(orders: TodayAdminOrder[]): MealSummaryItem[] {
   const map = orders.reduce<Record<string, number>>((acc, order) => {
-    const name = order.menuOfDayItem.menuItem.name;
+    const name = order.menuOfDayItem.name;
     acc[name] = (acc[name] ?? 0) + order.quantity;
     return acc;
   }, {});

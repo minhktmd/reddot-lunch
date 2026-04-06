@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, UtensilsCrossed, Users, BookOpen, BarChart2, Settings } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Users, BarChart2, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/admin/menu', label: 'Thực đơn hôm nay', icon: UtensilsCrossed },
   { href: '/admin/employees', label: 'Nhân viên', icon: Users },
-  { href: '/admin/menu-items', label: 'Danh mục món', icon: BookOpen },
   { href: '/admin/report', label: 'Báo cáo tháng', icon: BarChart2 },
   { href: '/admin/settings', label: 'Cài đặt', icon: Settings },
 ] as const;

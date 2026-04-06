@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 
-import type { EmployeePayment } from '../types/admin-dashboard.type';
+import { useLockMenu } from '../hooks/use-lock-menu';
 import { useTodayMenu } from '../hooks/use-today-menu';
 import { useTodayOrders } from '../hooks/use-today-orders';
-import { useLockMenu } from '../hooks/use-lock-menu';
 import { useUnlockMenu } from '../hooks/use-unlock-menu';
-import { DashboardStatusBar } from './dashboard-status-bar';
-import { DashboardOrderSummary } from './dashboard-order-summary';
+
 import { DashboardKitchenSummary } from './dashboard-kitchen-summary';
+import { DashboardOrderSummary } from './dashboard-order-summary';
 import { DashboardPaymentStatus } from './dashboard-payment-status';
+import { DashboardStatusBar } from './dashboard-status-bar';
+
+import type { EmployeePayment } from '../types/admin-dashboard.type';
 
 export function AdminDashboardPage() {
   const { data: menuResponse, isLoading: isMenuLoading } = useTodayMenu();

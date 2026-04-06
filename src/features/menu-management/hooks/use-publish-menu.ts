@@ -4,8 +4,8 @@ import { toast } from 'sonner'
 import { queryKeys } from '@/shared/constants/query-keys'
 
 import { publishMenu } from '../services/menu-management.service'
-import { type PublishMenuInput } from '../types/menu-management.type'
 import { useMenuDraftStore } from '../stores/menu-draft.store'
+import { type PublishMenuInput } from '../types/menu-management.type'
 
 export function usePublishMenu() {
   const queryClient = useQueryClient()

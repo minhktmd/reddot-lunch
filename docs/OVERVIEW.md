@@ -13,6 +13,8 @@
 
 **Platform:** Web (mobile-first). Hosted on Vercel + Supabase (free tier).
 
+> ⚠️ **Infrastructure note:** The app runs on Supabase free tier which has significant cold-start and connection latency — typically 3–4 seconds per API request. All design decisions around data fetching and mutation must account for this. Prefer batch operations over sequential requests. Never trigger an API call per user keystroke or per row edit.
+
 ---
 
 ## User Roles
@@ -34,18 +36,18 @@
 
 ```
 Employee        — a person in the office; name, email?, slackId?, role, autoOrder flag
-MenuItem        — reusable dish in the catalog (e.g. "Cơm gà Hội An")
 MenuOfDay       — the daily menu created by admin; lifecycle: draft → published → locked
-MenuOfDayItem   — a meal portion on a specific day (MenuItem + price + sideDishes for that day)
+MenuOfDayItem   — a meal portion on a specific day (name + price + sideDishes stored directly)
 Order           — one meal portion ordered by one employee on one day
 AppConfig       — singleton row; holds global settings (QR code URL)
 ```
+
+Note: There is **no separate MenuItem catalog entity**. Dish names are stored directly on `MenuOfDayItem` as plain strings. Autocomplete in the menu editor is sourced from historical `MenuOfDayItem` records.
 
 ### Relationships
 
 ```
 Employee      ──< Order              one employee → many orders across days
-MenuItem      ──< MenuOfDayItem      one dish → appears in many daily menus
 MenuOfDay     ──< MenuOfDayItem      one daily menu → many meal portions
 MenuOfDay     ──< Order              one daily menu → many orders
 MenuOfDayItem ──< Order              one meal portion → chosen by many orders
@@ -57,6 +59,7 @@ MenuOfDayItem ──< Order              one meal portion → chosen by many ord
 - Each Order has `quantity >= 1`
 - Payment state lives directly on `Order` (`isPaid`, `paidAt`) — no separate Payment entity
 - `AppConfig` always has exactly one row (`id = "singleton"`) — always upsert, never insert
+- `MenuOfDayItem` is unique by `(menuOfDayId, name)` — one dish name per day per menu
 - Schema → `docs/domains/*.md`
 
 ---
@@ -70,8 +73,8 @@ DRAFT ──→ PUBLISHED ──→ LOCKED
 
 | State | isPublished | isLocked | Employee can order? | Admin can edit items? |
 |---|---|---|---|---|
-| Draft | false | false | No | Yes |
-| Published | true | false | Yes | Yes |
+| Draft | false | false | No | Yes (store only, no DB) |
+| Published | true | false | Yes | Yes (batch save via "Lưu thay đổi") |
 | Locked | true | true | No | No |
 
 Full transition logic → `docs/domains/menu.md`
@@ -82,8 +85,8 @@ Full transition logic → `docs/domains/menu.md`
 
 - **Auto order** — when admin publishes menu, employees with `autoOrder = true` and no existing order for today get a random dish ordered for them automatically → details in `docs/domains/order.md`
 - **Payment** — employee pays all unpaid orders at once via bank transfer + QR code; no partial payment → details in `docs/domains/order.md`
-- **Pre-fill from previous day** — `GET /api/menu/today` returns previous day's items when no menu exists yet for today; admin edits in UI then publishes — nothing is written to DB until publish → details in `docs/domains/menu.md`
-- **MenuItem auto-creation** — when admin types a new dish name not in the catalog, system creates the `MenuItem` automatically on publish; admin can also manage catalog directly at `/admin/menu-items` → details in `docs/domains/menu.md`
+- **Menu editing is store-first** — all edits (pre-publish and post-publish) happen in the Zustand store; DB writes happen only on explicit publish or "Lưu thay đổi" action → details in `docs/domains/menu.md`
+- **Autocomplete from history** — when admin types a dish name, suggestions come from historical `MenuOfDayItem` records (deduplicated by name, most recent price); no separate catalog → `GET /api/menu/suggestions`
 - **Identity** — no auth; employee selects name on first visit, saved to `localStorage` as `selectedEmployeeId`
 
 ---
@@ -113,12 +116,13 @@ Details + message templates → `docs/domains/order.md`, `src/features/slack-not
 | # | Feature | Route | Description |
 |---|---|---|---|
 | F2 | Admin Dashboard | `/admin` | Daily overview: orders placed, meal summary, payment status |
-| F3 | Menu Management | `/admin/menu` | Create/edit daily menu, publish, lock, clone from previous day |
+| F3 | Menu Management | `/admin/menu` | Create/edit daily menu (spreadsheet-style), publish, lock |
 | F4 | App Settings | `/admin/settings` | Upload QR code image, manage AppConfig |
 | F5 | Employee Management | `/admin/employees` | CRUD employees, set role, email, slackId, autoOrder |
 | F6 | Monthly Report | `/admin/report` | Per-employee monthly cost breakdown, CSV export |
 | F7 | Slack Notifications | events + cron | Publish trigger + 13:00 payment reminder |
-| F8 | MenuItem Management | `/admin/menu-items` | CRUD dish catalog — name, soft-delete |
+
+Note: F8 (MenuItem Management) has been removed. There is no dish catalog to manage.
 
 ---
 
@@ -135,17 +139,12 @@ POST   /api/employees                     — Create employee
 PATCH  /api/employees/[id]                — Update name, email, slackId, role, autoOrder, isActive
 
 # Menu
-GET    /api/menu/today                    — Today's MenuOfDay if exists; else prefill from most recent day
-GET    /api/menu/[date]                   — Menu for a specific date (YYYY-MM-DD)
-POST   /api/menu/[id]/publish             — Create MenuOfDay + items, publish, trigger Slack + auto orders
+GET    /api/menu/today                    — Today's MenuOfDay if exists; else { status: "no-menu" }
+GET    /api/menu/suggestions              — Deduplicated dish name+price from history (for autocomplete)
+POST   /api/menu/publish                  — Create MenuOfDay + all items, publish, trigger Slack + auto orders
 POST   /api/menu/[id]/lock                — Lock orders
 POST   /api/menu/[id]/unlock              — Unlock orders
-PATCH  /api/menu/[id]                     — Update items on an already-published menu (add/edit/remove)
-
-# MenuItem catalog
-GET    /api/menu-items                    — List active MenuItems
-POST   /api/menu-items                    — Create MenuItem
-PATCH  /api/menu-items/[id]               — Update name or soft-delete
+PATCH  /api/menu/[id]/items               — Batch replace all items on a published menu (one request)
 
 # Orders
 GET    /api/orders/today                  — All orders for today (admin view)
@@ -179,8 +178,7 @@ src/
 │   │   ├── menu/page.tsx                 → F3: Menu management
 │   │   ├── settings/page.tsx             → F4: App settings
 │   │   ├── employees/page.tsx            → F5: Employee management
-│   │   ├── report/page.tsx               → F6: Monthly report
-│   │   └── menu-items/page.tsx           → F8: MenuItem management
+│   │   └── report/page.tsx               → F6: Monthly report
 │   └── api/                              → All API route handlers
 │
 ├── features/
@@ -190,11 +188,10 @@ src/
 │   ├── app-settings/                     → F4
 │   ├── employee-management/              → F5
 │   ├── monthly-report/                   → F6
-│   ├── slack-notifications/              → F7
-│   └── menu-item-management/             → F8
+│   └── slack-notifications/              → F7
 │
 ├── domains/
-│   ├── menu/                             → MenuOfDay, MenuOfDayItem, MenuItem shared logic
+│   ├── menu/                             → MenuOfDay, MenuOfDayItem shared logic
 │   ├── order/                            → Order logic, auto order, payment state
 │   └── employee/                         → Employee logic, role constants
 │
@@ -215,7 +212,7 @@ src/
 | Service | Purpose | Tier |
 |---|---|---|
 | Vercel | Next.js hosting + Cron Jobs | Free |
-| Supabase | PostgreSQL database | Free |
+| Supabase | PostgreSQL database | Free (cold-start latency 3–4s) |
 | Supabase Storage | QR code image (`qr-codes/payment-qr.png`) | Free |
 | Slack Incoming Webhook | Channel posts | Free |
 | Slack Bot API | Direct messages (`chat.postMessage`) | Free |
@@ -257,6 +254,7 @@ Details + helpers → `docs/domains/menu.md`
 4. **Name persists** — `localStorage` saves selected name; returning users skip name selection
 5. **Optimistic UI** — order appears immediately after submit
 6. **Slack links** go directly to the right page — no extra navigation
+7. **Batch writes** — menu editing never triggers per-action API calls; all changes buffered in store and saved in one request
 
 ---
 

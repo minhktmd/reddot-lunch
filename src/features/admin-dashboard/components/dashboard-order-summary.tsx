@@ -1,5 +1,6 @@
-import type { TodayAdminOrder } from '../types/admin-dashboard.type';
 import { DashboardOrderList } from './dashboard-order-list';
+
+import type { TodayAdminOrder } from '../types/admin-dashboard.type';
 
 type Props = {
   orders: TodayAdminOrder[];
