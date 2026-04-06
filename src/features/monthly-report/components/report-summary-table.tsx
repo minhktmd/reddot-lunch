@@ -2,10 +2,11 @@
 
 import { Fragment, useState } from 'react';
 
-import type { MonthlyReportRow } from '../types/report.type';
-import { ReportSummaryRow } from './report-summary-row';
 import { ReportDetailRow } from './report-detail-row';
 import { ReportFooterRow } from './report-footer-row';
+import { ReportSummaryRow } from './report-summary-row';
+
+import type { MonthlyReportRow } from '../types/report.type';
 
 type ReportSummaryTableProps = {
   rows: MonthlyReportRow[];

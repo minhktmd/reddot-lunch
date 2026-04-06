@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
-import { EMPLOYEE_ROLE } from '../constants/employee-role.constant';
-import { apiClient } from '@/shared/services/api';
 import { logger } from '@/shared/lib/logger';
+import { apiClient } from '@/shared/services/api';
+
+import { EMPLOYEE_ROLE } from '../constants/employee-role.constant';
+
 import type { EmployeeListItem } from '../types/employee.type';
 
 const employeeListItemSchema = z.object({

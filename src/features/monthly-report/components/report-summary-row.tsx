@@ -3,6 +3,7 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 import { formatPrice } from '@/shared/utils/format';
+
 import type { MonthlyReportRow } from '../types/report.type';
 
 type ReportSummaryRowProps = {

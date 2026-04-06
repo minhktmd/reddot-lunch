@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 import { env } from '@/config/env';
 import { getTodayUTC } from '@/domains/menu';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAppConfig } from '../hooks/use-app-config';
+
 import { SettingsQRUpload } from './settings-qr-upload';
 
 function formatUpdatedAt(isoString: string): string {

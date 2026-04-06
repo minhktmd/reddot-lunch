@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/atoms/button';
 import { cn } from '@/shared/lib/cn';
 
 import { useToggleEmployeeActive } from '../hooks/use-edit-employee';
+
 import { EmployeeDeleteDialog } from './employee-delete-dialog';
 
 type EmployeeRowProps = {

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { Check, ChevronsUpDown } from 'lucide-react';
+import { useState } from 'react';
 
-import { cn } from '@/shared/lib/cn';
 import {
   Command,
   CommandEmpty,
@@ -13,6 +12,7 @@ import {
   CommandList,
 } from '@/shared/components/atoms/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/atoms/popover';
+import { cn } from '@/shared/lib/cn';
 
 import type { EmployeeListItem } from '../types/employee.type';
 

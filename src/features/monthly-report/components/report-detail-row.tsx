@@ -1,6 +1,7 @@
 'use client';
 
 import { formatDate, formatPrice } from '@/shared/utils/format';
+
 import { useEmployeeReport } from '../hooks/use-employee-report';
 
 type ReportDetailRowProps = {
