@@ -1,12 +1,13 @@
 'use client';
 
-import type { ExternalDishItem } from '@/domains/menu';
 
 import { useSaveExternalDishes } from '../hooks/use-save-external-dishes';
 import { useMenuDraftStore } from '../stores/menu-draft.store';
 
 import { MenuExternalAddForm } from './menu-external-add-form';
 import { MenuExternalRow } from './menu-external-row';
+
+import type { ExternalDishItem } from '@/domains/menu';
 
 type MenuExternalSectionProps =
   | { mode: 'prefill' }
@@ -57,7 +58,7 @@ function PrefillExternalSection() {
 // Screens 2 & 3: API-backed
 function PublishedExternalSection({
   menuId,
-  externalDishes,
+  externalDishes = [],
   isLocked,
 }: {
   menuId: string;
