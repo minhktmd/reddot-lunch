@@ -5,15 +5,13 @@ import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 
 const updateItemsSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        name: z.string().min(1),
-        price: z.number().int().min(1),
-        sideDishes: z.string().optional(),
-      })
-    )
-    .min(1, 'Cần ít nhất một món'),
+  items: z.array(
+    z.object({
+      name: z.string().min(1),
+      price: z.number().int().min(1),
+      sideDishes: z.string().optional(),
+    })
+  ),
 });
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -43,6 +41,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { items: submittedItems } = result.data;
+    const externalDishes = (menu.externalDishes as import('@/domains/menu').ExternalDishItem[]) ?? [];
+
+    if (submittedItems.length === 0 && externalDishes.length === 0) {
+      return NextResponse.json(
+        { message: 'Cần ít nhất một món ăn hoặc món ăn ngoài' },
+        { status: 400 }
+      );
+    }
     const submittedNames = new Set(submittedItems.map((i) => i.name));
 
     const existingItems = await prisma.menuOfDayItem.findMany({
@@ -87,6 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       date: updated!.date.toISOString(),
       isPublished: updated!.isPublished,
       isLocked: updated!.isLocked,
+      externalDishes: (updated!.externalDishes as import('@/domains/menu').ExternalDishItem[]) ?? [],
       items: updated!.items.map((item) => ({
         id: item.id,
         name: item.name,
