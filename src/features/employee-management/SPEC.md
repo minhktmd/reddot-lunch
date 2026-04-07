@@ -52,15 +52,9 @@ Inline form above the table:
 
 ### Edit Employee
 
-Clicking "Sửa" expands an inline edit form within the row (not a modal):
-
-```
-[Tên *] [Email] [Slack ID] [Vai trò ▾] [Lưu] [Hủy]
-```
-
-- Pre-filled with current values
-- On save: `PATCH /api/employees/[id]`
-- On cancel: discard changes, collapse form
+Clicking "Sửa" opens a right-side Sheet panel with the employee's data pre-filled.
+Fields: Tên, Email, Slack ID, Vai trò. Save calls `PATCH /api/employees/[id]`.
+Cancel closes the sheet without saving.
 
 ---
 
@@ -95,7 +89,7 @@ features/employee-management/
 ├── components/
 │   ├── employee-table.tsx          — Full table with active + inactive rows
 │   ├── employee-row.tsx            — Single employee row (view mode)
-│   ├── employee-row-edit.tsx       — Inline edit form within a row
+│   ├── employee-edit-sheet.tsx      — Right-side Sheet panel for editing an employee
 │   └── employee-add-form.tsx       — Add new employee form above table
 ├── hooks/
 │   ├── use-employees-all.ts        — GET /api/employees?includeInactive=true
