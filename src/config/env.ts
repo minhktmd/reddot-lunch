@@ -10,8 +10,6 @@ export const env = {
   // Slack
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ?? '',
   SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL ?? '',
-  SLACK_CHANNEL_ID: process.env.SLACK_CHANNEL_ID ?? '',
-
   // App
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? '',
 
