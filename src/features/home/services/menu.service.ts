@@ -12,12 +12,18 @@ const menuOfDayItemSchema = z.object({
   sideDishes: z.string().nullable(),
 });
 
+const externalDishItemSchema = z.object({
+  name: z.string(),
+  orderUrl: z.string(),
+});
+
 const menuOfDaySchema = z.object({
   id: z.string(),
   date: z.string(),
   isPublished: z.boolean(),
   isLocked: z.boolean(),
   items: z.array(menuOfDayItemSchema),
+  externalDishes: z.array(externalDishItemSchema),
 });
 
 const prefillItemSchema = z.object({

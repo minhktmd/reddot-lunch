@@ -8,16 +8,20 @@ import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 import { postChannel, postDM } from '@/shared/lib/slack';
 
+const externalDishItemSchema = z.object({
+  name: z.string().min(1),
+  orderUrl: z.string().url(),
+});
+
 const publishMenuSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        name: z.string().min(1),
-        price: z.number().int().min(1),
-        sideDishes: z.string().optional(),
-      })
-    )
-    .min(1, 'Cần ít nhất một món'),
+  items: z.array(
+    z.object({
+      name: z.string().min(1),
+      price: z.number().int().min(1),
+      sideDishes: z.string().optional(),
+    })
+  ),
+  externalDishes: z.array(externalDishItemSchema).default([]),
 });
 
 export async function POST(request: NextRequest) {
@@ -29,7 +33,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Dữ liệu không hợp lệ', errors: result.error.flatten() }, { status: 400 });
     }
 
-    const { items } = result.data;
+    const { items, externalDishes } = result.data;
+
+    if (items.length === 0 && externalDishes.length === 0) {
+      return NextResponse.json(
+        { message: 'Thêm ít nhất một món ăn hoặc một món ăn ngoài trước khi đăng' },
+        { status: 400 },
+      );
+    }
+
     const today = getTodayUTC();
 
     const existing = await prisma.menuOfDay.findUnique({ where: { date: today } });
@@ -43,6 +55,7 @@ export async function POST(request: NextRequest) {
         data: {
           date: today,
           isPublished: true,
+          externalDishes: externalDishes,
           items: {
             create: items.map((item) => ({
               name: item.name,
@@ -54,61 +67,65 @@ export async function POST(request: NextRequest) {
         include: { items: true },
       });
 
-      // Auto orders for eligible employees
-      const employees = await tx.employee.findMany({
-        where: { isActive: true, autoOrder: true },
-      });
-
-      for (const employee of employees) {
-        const existingOrder = await tx.order.count({
-          where: { menuOfDayId: menuOfDay.id, employeeId: employee.id },
+      // Auto orders only when standard items exist
+      if (menuOfDay.items.length > 0) {
+        const employees = await tx.employee.findMany({
+          where: { isActive: true, autoOrder: true },
         });
-        if (existingOrder > 0) continue;
 
-        const randomItem = menuOfDay.items[Math.floor(Math.random() * menuOfDay.items.length)];
-        await tx.order.create({
-          data: {
-            menuOfDayId: menuOfDay.id,
-            employeeId: employee.id,
-            menuOfDayItemId: randomItem.id,
-            quantity: 1,
-            isAutoOrder: true,
-          },
-        });
+        for (const employee of employees) {
+          const existingOrder = await tx.order.count({
+            where: { menuOfDayId: menuOfDay.id, employeeId: employee.id },
+          });
+          if (existingOrder > 0) continue;
+
+          const randomItem = menuOfDay.items[Math.floor(Math.random() * menuOfDay.items.length)];
+          await tx.order.create({
+            data: {
+              menuOfDayId: menuOfDay.id,
+              employeeId: employee.id,
+              menuOfDayItemId: randomItem.id,
+              quantity: 1,
+              isAutoOrder: true,
+            },
+          });
+        }
       }
 
       return menuOfDay;
     });
 
     // Slack notifications (outside transaction — failures should not roll back the publish)
-    const appUrl = env.NEXT_PUBLIC_APP_URL;
+    if (items.length > 0) {
+      const appUrl = env.NEXT_PUBLIC_APP_URL;
 
-    const channelMessage = buildMenuPublishedMessage(
-      today,
-      items.map((item) => ({ name: item.name, price: item.price, sideDishes: item.sideDishes ?? null })),
-      appUrl,
-    );
-    await postChannel(channelMessage);
+      const channelMessage = buildMenuPublishedMessage(
+        today,
+        items.map((item) => ({ name: item.name, price: item.price, sideDishes: item.sideDishes ?? null })),
+        appUrl,
+      );
+      await postChannel(channelMessage);
 
-    // DMs to auto-order employees
-    const autoOrderedEmployees = await prisma.order.findMany({
-      where: { menuOfDayId: menu.id, isAutoOrder: true },
-      include: {
-        employee: true,
-        menuOfDayItem: true,
-      },
-    });
+      // DMs to auto-order employees
+      const autoOrderedEmployees = await prisma.order.findMany({
+        where: { menuOfDayId: menu.id, isAutoOrder: true },
+        include: {
+          employee: true,
+          menuOfDayItem: true,
+        },
+      });
 
-    await Promise.allSettled(
-      autoOrderedEmployees
-        .filter((o) => o.employee.slackId)
-        .map((o) =>
-          postDM(
-            o.employee.slackId!,
-            buildAutoOrderMessage(o.menuOfDayItem.name, o.menuOfDayItem.price, appUrl),
+      await Promise.allSettled(
+        autoOrderedEmployees
+          .filter((o) => o.employee.slackId)
+          .map((o) =>
+            postDM(
+              o.employee.slackId!,
+              buildAutoOrderMessage(o.menuOfDayItem.name, o.menuOfDayItem.price, appUrl),
+            ),
           ),
-        ),
-    );
+      );
+    }
 
     return NextResponse.json({
       id: menu.id,
@@ -121,6 +138,7 @@ export async function POST(request: NextRequest) {
         price: item.price,
         sideDishes: item.sideDishes,
       })),
+      externalDishes: (menu.externalDishes as import('@/domains/menu').ExternalDishItem[]) ?? [],
     });
   } catch (error) {
     logger.error('[POST /api/menu/publish]', error);

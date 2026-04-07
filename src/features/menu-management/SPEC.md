@@ -4,7 +4,7 @@
 > Domain knowledge → `docs/domains/menu.md`, `docs/domains/order.md`.
 > Route: `/admin/menu`
 >
-> ⚠️ **Design note:** All menu editing must happen in the Zustand store first. DB writes happen only on explicit "Đăng thực đơn" or "Lưu thay đổi" actions — never per row edit.
+> ⚠️ **Latency note:** The app runs on Supabase free tier with 3–4s API latency. All menu editing must happen in the Zustand store first. DB writes happen only on explicit "Đăng thực đơn" or "Lưu thay đổi" actions — never per row edit.
 
 ---
 
@@ -14,11 +14,15 @@ Admin uses this page daily to:
 
 1. View today's menu — starts empty with autocomplete suggestions loaded from history
 2. Edit the menu inline (spreadsheet-style) — all changes are local, no API calls
-3. Publish the menu → single DB write, Slack fires, employees can order, auto orders created
-4. Lock orders when ready to send to kitchen
-5. Unlock if changes are needed
+3. Add/remove external dish links (Grab, ShopeeFood, etc.) — available from Screen 1, store-buffered before publish, live API calls post-publish
+4. Publish the menu → single DB write, Slack fires, employees can order, auto orders created
+5. Lock orders when ready to send to kitchen
+6. Unlock if changes are needed
 
-**Key principle:** The table is always editable inline. There is always one empty row at the bottom. All edits are store-only until admin explicitly saves.
+**Key principles:**
+- The menu items table is always editable inline with one empty row at the bottom. All item edits are store-only until admin explicitly saves.
+- The external dishes section is visible and editable on **all screens including Screen 1** — admin can add external dish links before publishing. Pre-publish edits are store-buffered and sent with the publish request. Post-publish edits write directly to the DB.
+- A menu can be published with **only external dishes and no standard items** — valid for days when the whole office orders externally.
 
 ---
 
@@ -48,15 +52,34 @@ Rules:
 - Every cell is directly editable — click to edit, no separate "Sửa" button
 - Always one empty row at the bottom
 - When admin types a dish name in the empty row → a new empty row appears below it automatically
-- **Auto-fill on new row:** when a new row is created (admin types in the empty row), its `price` and `sideDishes` are automatically copied from the row immediately above it. If there is no row above (first row), they default to empty. This saves repeated input since dishes on the same day usually share the same price and side dishes.
 - [Xóa] button removes that row (with confirmation if the row has content)
 - All changes are **store-only** — zero API calls until publish
 
+**External dishes section** — below the menu table, always visible:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Món ăn ngoài
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+| Tên món                        | Link đặt              |        |
+|--------------------------------|-----------------------|--------|
+| Bún sườn chua — Trần Huy Liệu  | grab.onelink.me/...   | [Xóa]  |
+
+[Tên món ________________]  [Link đặt ________________]  [Thêm]
+```
+
+Rules:
+- Section is visible on Screen 1 — admin can add external dishes before publishing
+- [Thêm] → validates fields → adds item to the **store** (no API call yet)
+- [Xóa] → removes from store immediately (no API call)
+- All changes are **store-only** — sent to server as part of the publish request
+
 **Publish flow:**
-1. Validate: at least one row with non-empty name and price > 0 — show inline error if not
+1. Validate: at least one valid standard dish (non-empty name + price > 0) **OR** at least one external dish — show inline error `"Thêm ít nhất một món ăn hoặc một món ăn ngoài trước khi đăng"` if both are empty
 2. Confirm dialog: `"Đăng thực đơn và thông báo Slack?"`
-3. `POST /api/menu/publish` with full item list — single request
-4. Server atomically: creates `MenuOfDay` + all `MenuOfDayItem` records + auto orders + Slack
+3. `POST /api/menu/publish` with `{ items, externalDishes }` — single request
+4. Server atomically: creates `MenuOfDay` + all `MenuOfDayItem` records + stores `externalDishes` + auto orders + Slack
 5. UI transitions to Screen 2
 
 ---
@@ -68,20 +91,21 @@ Rules:
 Thứ Tư, 04/04/2026   [Đã đăng]   [Lưu thay đổi]   [Chốt sổ]
 ```
 
-"Lưu thay đổi" button is only shown when `hasUnsavedChanges = true` in the store.
+"Lưu thay đổi" button is only shown when `hasUnsavedChanges = true` in the store (applies to standard items only).
 
 **Menu table:** same spreadsheet-style as Screen 1 — fully editable inline, empty row at bottom.
 
-When admin makes any change (edit a cell, add a row, delete a row) → `hasUnsavedChanges = true` → "Lưu thay đổi" button appears.
+When admin makes any change to standard items (edit a cell, add a row, delete a row) → `hasUnsavedChanges = true` → "Lưu thay đổi" button appears.
 
-**Save flow ("Lưu thay đổi"):**
+**External dishes section:** fully editable. Changes now write directly to the DB (not store-buffered):
+- [Thêm] → validates → `PATCH /api/menu/[id]/external-dishes` with current list + new item → list updates on success
+- [Xóa] → inline confirm (3s red pattern) → `PATCH /api/menu/[id]/external-dishes` with item removed
+
+**Save flow for standard items ("Lưu thay đổi"):**
 1. `PATCH /api/menu/[id]/items` with full current item list — single request
-2. Server diffs the submitted list against existing `MenuOfDayItem` records for this menu
-3. For items being removed: **cascade delete their orders first**, then delete the item — all inside a single Prisma transaction
-4. For items remaining: upsert by `(menuOfDayId, name)`
-5. On success: return updated item list, frontend sets `hasUnsavedChanges = false`, button disappears
-
-**Why cascade delete orders:** if admin removes a dish, it means the supplier is no longer serving it. Any employee orders for that dish are invalidated — the employee will see the dish gone and must re-order another dish. No 409 blocking — the delete always succeeds.
+2. Server diffs: deletes removed items (blocked if they have orders), upserts remaining
+3. If any items cannot be deleted because they have orders → return 409 → show error toast: `"Không thể xóa: [tên món] đã có đơn hàng"`
+4. On success: `hasUnsavedChanges = false`, button disappears
 
 ---
 
@@ -93,6 +117,8 @@ Thứ Tư, 04/04/2026   [Đã chốt]   [Mở lại]
 ```
 
 **Menu table:** read-only. No empty row. No [Xóa] buttons. Cells are not editable.
+
+**External dishes section:** read-only. No add form. No [Xóa] buttons. Links are still clickable.
 
 **Kitchen summary box:**
 ```
@@ -106,8 +132,7 @@ Phở gà HN           x 2
 Tổng: 10 suất
 ```
 
-"Sao chép" button → copies summary text to clipboard.
-Computed from all orders for today grouped by dish name + summed quantity.
+"Sao chép" button → copies summary text to clipboard. Only shown when standard items exist (external-dishes-only days have no kitchen summary to copy).
 
 ---
 
@@ -156,15 +181,22 @@ When admin types in the dish name cell:
 - [ ] US5: Admin edits any cell inline — no API call is made
 - [ ] US6: A new empty row appears automatically when admin types in the last empty row
 - [ ] US7: Admin can delete any row with the [Xóa] button
-- [ ] US8: Admin cannot publish an empty menu — inline error shown
-- [ ] US9: Admin publishes the menu — single API call, Slack fires, auto orders created, UI shows Published
-- [ ] US10: After publish, admin can still edit the table inline — "Lưu thay đổi" button appears when changes exist
-- [ ] US11: Admin saves post-publish changes — single API call, all changes applied at once
-- [ ] US12: Admin removes a dish that has orders — orders for that dish are automatically deleted, dish is removed successfully
-- [ ] US13: Admin locks orders — kitchen summary appears with copyable text
-- [ ] US14: Admin can copy kitchen summary to clipboard
-- [ ] US15: Admin can unlock orders to allow changes
-- [ ] US16: Unsaved changes warning shown if admin tries to lock with pending edits
+- [x] US8: Admin cannot publish when both standard items and external dishes are empty — inline error shown
+- [x] US9: Admin publishes with only standard items — single API call, Slack fires, auto orders created
+- [x] US10: Admin publishes with only external dishes and no standard items — valid, publishes successfully
+- [x] US11: Admin publishes with both standard items and external dishes — all sent in one request
+- [x] US12: After publish, admin can still edit the standard items table — "Lưu thay đổi" button appears when changes exist
+- [x] US13: Admin saves post-publish item changes — single API call, all changes applied at once
+- [x] US14: Admin cannot remove a dish that already has orders — error toast shows blocked dish names
+- [x] US15: Admin locks orders — kitchen summary appears with copyable text
+- [x] US16: Admin can copy kitchen summary to clipboard
+- [x] US17: Admin can unlock orders to allow changes
+- [x] US18: Unsaved changes warning shown if admin tries to lock with pending edits
+- [x] US19: Admin can add an external dish link (name + URL) on Screen 1 before publishing — stored in draft
+- [x] US20: Admin can add an external dish link on Screen 2 after publishing — saved immediately to DB
+- [x] US21: Admin can remove an external dish link on Screen 2 — saved immediately to DB
+- [x] US22: External dishes section is read-only when orders are locked (Screen 3)
+- [x] US23: External dish links are clickable on all screens including Screen 3
 
 ---
 
@@ -175,10 +207,29 @@ When admin types in the dish name cell:
 | Load today's menu | GET | `/api/menu/today` | — |
 | Load autocomplete suggestions | GET | `/api/menu/suggestions` | — |
 | Load today's orders (for kitchen summary) | GET | `/api/orders/today` | — |
-| Publish | POST | `/api/menu/publish` | `{ items: [{ name, price, sideDishes? }] }` |
-| Batch save post-publish changes | PATCH | `/api/menu/[id]/items` | `{ items: [{ name, price, sideDishes? }] }` |
+| Publish | POST | `/api/menu/publish` | `{ items: [{ name, price, sideDishes? }], externalDishes: [{ name, orderUrl }] }` |
+| Batch save post-publish item changes | PATCH | `/api/menu/[id]/items` | `{ items: [{ name, price, sideDishes? }] }` |
+| Save external dish changes | PATCH | `/api/menu/[id]/external-dishes` | `{ externalDishes: [{ name, orderUrl }] }` |
 | Lock | POST | `/api/menu/[id]/lock` | — |
 | Unlock | POST | `/api/menu/[id]/unlock` | — |
+
+### PATCH /api/menu/[id]/external-dishes
+
+- Accepts the **full array** — replaces `MenuOfDay.externalDishes` entirely
+- Validates each item: `name` non-empty string, `orderUrl` valid URL
+- Guarded: returns `403` if `isLocked = true`
+- Returns updated `{ externalDishes: ExternalDishItem[] }`
+
+### POST /api/menu/publish — updated body
+
+```ts
+type PublishMenuBody = {
+  items: { name: string; price: number; sideDishes?: string }[]
+  externalDishes: { name: string; orderUrl: string }[]
+}
+```
+
+Server validation: `items.length > 0 || externalDishes.length > 0` — return `400` if both empty.
 
 ---
 
@@ -196,13 +247,17 @@ features/menu-management/
 │   ├── menu-save-button.tsx         — "Lưu thay đổi" — only shown when hasUnsavedChanges
 │   ├── menu-lock-button.tsx         — "Chốt sổ" with unsaved-changes guard + confirm dialog
 │   ├── menu-unlock-button.tsx       — "Mở lại" with confirm dialog
-│   ├── menu-kitchen-summary.tsx     — Aggregated order summary + copy button
-│   └── menu-status-badge.tsx        — Chưa đăng / Đã đăng / Đã chốt badge
+│   ├── menu-kitchen-summary.tsx     — Aggregated order summary + copy button (hidden on external-only days)
+│   ├── menu-status-badge.tsx        — Chưa đăng / Đã đăng / Đã chốt badge
+│   ├── menu-external-section.tsx    — Container: heading + list + add form; read-only when locked; always visible
+│   ├── menu-external-row.tsx        — Single external dish row: name + URL chip + delete button
+│   └── menu-external-add-form.tsx   — Inline add form: name input + URL input + submit button
 ├── hooks/
 │   ├── use-today-menu.ts            — GET /api/menu/today
 │   ├── use-menu-suggestions.ts      — GET /api/menu/suggestions
 │   ├── use-publish-menu.ts          — POST /api/menu/publish
 │   ├── use-save-menu-items.ts       — PATCH /api/menu/[id]/items
+│   ├── use-save-external-dishes.ts  — PATCH /api/menu/[id]/external-dishes (post-publish only)
 │   ├── use-lock-menu.ts             — POST /api/menu/[id]/lock
 │   ├── use-unlock-menu.ts           — POST /api/menu/[id]/unlock
 │   └── use-today-orders.ts          — GET /api/orders/today (for kitchen summary)
@@ -223,39 +278,55 @@ type DraftItem = {
   sideDishes: string    // empty string means no side dishes
 }
 
+type DraftExternalDish = {
+  tempId: string        // client-only, used as React key, never sent to server
+  name: string
+  orderUrl: string
+}
+
 type MenuSuggestion = {
   name: string
   price: number
 }
 
 type MenuDraftStore = {
+  // Standard items
   items: DraftItem[]
   hasUnsavedChanges: boolean
-
-  suggestions: MenuSuggestion[]
-  setSuggestions: (suggestions: MenuSuggestion[]) => void
-
-  setItems: (items: DraftItem[]) => void          // called after publish/save to sync with DB
+  setItems: (items: DraftItem[]) => void
   updateItem: (tempId: string, patch: Partial<Omit<DraftItem, 'tempId'>>) => void
   removeItem: (tempId: string) => void
 
+  // External dishes (pre-publish only — post-publish writes directly to server)
+  externalDishes: DraftExternalDish[]
+  addExternalDish: (dish: Omit<DraftExternalDish, 'tempId'>) => void
+  removeExternalDish: (tempId: string) => void
+  setExternalDishes: (dishes: DraftExternalDish[]) => void  // called after publish to clear draft
+
+  // Autocomplete suggestions
+  suggestions: MenuSuggestion[]
+  setSuggestions: (suggestions: MenuSuggestion[]) => void
+
   markSaved: () => void   // sets hasUnsavedChanges = false
-  reset: () => void       // clears items, resets hasUnsavedChanges
+  reset: () => void       // clears items + externalDishes, resets hasUnsavedChanges
 }
 ```
 
-**Empty row:** rendered by `menu-table.tsx` — always appends one virtual empty row to the displayed list. When the user types a name into the empty row, the component:
-1. Calls `updateItem` on that row with `{ name, price: lastItem.price, sideDishes: lastItem.sideDishes }` — copying price and sideDishes from the last real item above
-2. Generates a new empty row below
+**Pre-publish:** both `items` and `externalDishes` in the store are sent together in `POST /api/menu/publish`.
 
-This is purely rendering logic, not store state. The auto-fill values come from the last item in `store.items` at the moment the name is first typed.
+**Post-publish:** `items` remains store-buffered (saved via "Lưu thay đổi"). `externalDishes` in the store is no longer used — the live list comes from the TanStack Query cache (`use-today-menu`), and mutations call `PATCH /api/menu/[id]/external-dishes` directly.
+
+**Empty row:** rendered by `menu-table.tsx` — always appends one virtual empty row to the displayed list. Purely rendering logic, not store state.
 
 ---
 
 ## Notes
 
-- **Price input:** integer only, no decimals — display as `45.000đ` but store as `45000`; use a numeric input that strips non-digit characters
+- **Price input:** integer only, no decimals — display as `45.000đ` but store as `45000`
 - **Inline confirm for delete:** clicking [Xóa] on a row with content → button turns red + text changes to "Chắc chắn?" for 3s → second click confirms; click elsewhere cancels
-- **Kitchen summary format:** plain text, space-aligned — optimized for pasting into Zalo/Messenger to send to restaurant
+- **Kitchen summary:** only rendered when today has at least one standard `MenuOfDayItem`; hidden on external-dishes-only days
 - **Tab navigation:** pressing Tab in a row should move focus to the next cell, then to the next row's first cell
 - **`sideDishes` is intentionally empty after autocomplete** — never prefill from history; admin fills daily
+- **External dish URL display:** truncate long URLs in the table with ellipsis + show full URL on hover (tooltip)
+- **External dish URL validation:** validate with `z.string().url()` on both client (form) and server (API route)
+- **External dishes are per-day** — never pre-filled from previous day; admin adds them fresh each time

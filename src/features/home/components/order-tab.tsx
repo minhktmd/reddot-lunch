@@ -6,6 +6,7 @@ import { usePlaceOrder } from '../hooks/use-place-order';
 import { useTodayMenu } from '../hooks/use-today-menu';
 import { useTodayOrders } from '../hooks/use-today-orders';
 
+import { OrderExternalDishes } from './order-external-dishes';
 import { OrderList } from './order-list';
 import { OrderMenuCard } from './order-menu-card';
 
@@ -28,6 +29,7 @@ export function OrderTab({ employeeId }: OrderTabProps) {
   const isPublished = menuData?.status === 'exists' && menuData.menu.isPublished;
   const isLocked = menuData?.status === 'exists' && menuData.menu.isLocked;
   const menuItems = menuData?.status === 'exists' ? menuData.menu.items : [];
+  const externalDishes = menuData?.status === 'exists' ? menuData.menu.externalDishes : [];
 
   if (!isPublished) {
     return (
@@ -38,6 +40,9 @@ export function OrderTab({ employeeId }: OrderTabProps) {
     );
   }
 
+  const hasStandardItems = menuItems.length > 0;
+  const hasExternalDishes = externalDishes.length > 0;
+
   return (
     <div className="space-y-4">
       {isLocked && (
@@ -46,32 +51,38 @@ export function OrderTab({ employeeId }: OrderTabProps) {
         </div>
       )}
 
-      <div>
-        <h3 className="mb-2 text-sm font-medium text-foreground">Thực đơn hôm nay</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {menuItems.map((item) => (
-            <OrderMenuCard
-              key={item.id}
-              item={item}
-              isLocked={isLocked}
-              isLoading={placeOrder.isPending}
-              onPlaceOrder={(itemId, quantity) => {
-                placeOrder.mutate({ employeeId, menuOfDayItemId: itemId, quantity });
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {hasStandardItems && (
+        <>
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-foreground">Thực đơn hôm nay</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {menuItems.map((item) => (
+                <OrderMenuCard
+                  key={item.id}
+                  item={item}
+                  isLocked={isLocked}
+                  isLoading={placeOrder.isPending}
+                  onPlaceOrder={(itemId, quantity) => {
+                    placeOrder.mutate({ employeeId, menuOfDayItemId: itemId, quantity });
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
-      <OrderList
-        orders={orders}
-        menuItems={menuItems}
-        isLocked={isLocked}
-        onEdit={(id, menuOfDayItemId, quantity) => editOrder.mutate({ id, menuOfDayItemId, quantity })}
-        onCancel={(id) => cancelOrder.mutate(id)}
-        isEditing={editOrder.isPending}
-        isCancelling={cancelOrder.isPending}
-      />
+          <OrderList
+            orders={orders}
+            menuItems={menuItems}
+            isLocked={isLocked}
+            onEdit={(id, menuOfDayItemId, quantity) => editOrder.mutate({ id, menuOfDayItemId, quantity })}
+            onCancel={(id) => cancelOrder.mutate(id)}
+            isEditing={editOrder.isPending}
+            isCancelling={cancelOrder.isPending}
+          />
+        </>
+      )}
+
+      {hasExternalDishes && <OrderExternalDishes items={externalDishes} />}
     </div>
   );
 }

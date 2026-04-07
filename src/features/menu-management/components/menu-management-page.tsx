@@ -6,6 +6,7 @@ import { useMenuSuggestions } from '../hooks/use-menu-suggestions';
 import { useTodayMenu } from '../hooks/use-today-menu';
 import { useMenuDraftStore } from '../stores/menu-draft.store';
 
+import { MenuExternalSection } from './menu-external-section';
 import { MenuHeader } from './menu-header';
 import { MenuKitchenSummary } from './menu-kitchen-summary';
 import { MenuTable, MenuTableReadonly } from './menu-table';
@@ -36,13 +37,13 @@ export function MenuManagementPage() {
           name: item.name,
           price: item.price,
           sideDishes: item.sideDishes ?? '',
-        })),
+        }))
       );
     }
   }, [data?.status, data?.status === 'exists' ? data.menu.id : null]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isLoading) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">Đang tải thực đơn...</p>;
+    return <p className="text-muted-foreground py-12 text-center text-sm">Đang tải thực đơn...</p>;
   }
 
   if (isError || !data) {
@@ -54,6 +55,7 @@ export function MenuManagementPage() {
       <div>
         <MenuHeader status="prefill" menu={null} date={PAGE_DATE} />
         <MenuTable />
+        <MenuExternalSection mode="prefill" />
       </div>
     );
   }
@@ -65,7 +67,13 @@ export function MenuManagementPage() {
     <div>
       <MenuHeader status={status} menu={menu} date={new Date(menu.date)} />
       {menu.isLocked ? <MenuTableReadonly items={menu.items} /> : <MenuTable />}
-      {menu.isLocked && <MenuKitchenSummary />}
+      <MenuExternalSection
+        mode="published"
+        menuId={menu.id}
+        externalDishes={menu.externalDishes}
+        isLocked={menu.isLocked}
+      />
+      {menu.isLocked && menu.items.length > 0 && <MenuKitchenSummary />}
     </div>
   );
 }

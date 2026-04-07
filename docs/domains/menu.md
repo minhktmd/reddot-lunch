@@ -1,6 +1,6 @@
 # Domain: Menu
 
-> Schema, business rules, and helpers for MenuOfDay and MenuOfDayItem.
+> Schema, business rules, and helpers for MenuOfDay, MenuOfDayItem, and ExternalDishItem.
 > Big picture → `docs/OVERVIEW.md`. Feature detail → `src/features/menu-management/SPEC.md`.
 
 ---
@@ -9,14 +9,15 @@
 
 ```prisma
 model MenuOfDay {
-  id          String          @id @default(cuid())
-  date        DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
-  isPublished Boolean         @default(false)
-  isLocked    Boolean         @default(false)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  items       MenuOfDayItem[]
-  orders      Order[]
+  id              String          @id @default(cuid())
+  date            DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished     Boolean         @default(false)
+  isLocked        Boolean         @default(false)
+  externalDishes  Json            @default("[]")  // ExternalDishItem[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           MenuOfDayItem[]
+  orders          Order[]
 
   @@map("menu_of_days")
 }
@@ -40,11 +41,62 @@ model MenuOfDayItem {
 | Field | Notes |
 |---|---|
 | `MenuOfDay.date` | Always `00:00:00 UTC` representing midnight Asia/Ho_Chi_Minh — enforced by `@unique` |
+| `MenuOfDay.externalDishes` | JSON array of `ExternalDishItem` — display-only delivery links; no orders, no payment |
 | `MenuOfDayItem.name` | Dish name stored directly as a string — no separate catalog entity |
 | `MenuOfDayItem.price` | VND, specific to this day — same dish can have different prices on different days |
 | `MenuOfDayItem.sideDishes` | Free-text, e.g. `"Nộm, canh bầu, chả cá"` — specific to this day |
 | `MenuOfDayItem` cascade | Deleted automatically when parent `MenuOfDay` is deleted |
 | `@@unique([menuOfDayId, name])` | One dish name per day — prevents duplicates |
+
+---
+
+## ExternalDishItem
+
+External dishes are delivery platform links (Grab, ShopeeFood, Be, Foody, etc.) that admin can attach to today's menu for employees who want to order outside the standard menu. They are stored as a JSON array directly on `MenuOfDay` — no separate table.
+
+```ts
+// src/domains/menu/types/menu.type.ts
+export type ExternalDishItem = {
+  name: string      // e.g. "Bún sườn chua — Trần Huy Liệu"
+  orderUrl: string  // valid URL — deep link to restaurant/dish on delivery platform
+}
+```
+
+### Business rules
+
+- **Display-only** — no orders, no payment tracking, no quantity counting
+- **Per-day** — stored on `MenuOfDay.externalDishes`; no history or reuse across days
+- **Editable from Screen 1** — admin can add external dishes before publishing; held in Zustand draft store alongside menu items and sent to the server in the publish request
+- **Always full replacement post-publish** — `PATCH /api/menu/[id]/external-dishes` receives the complete array and overwrites; no partial add/remove endpoints
+- **Only editable when unlocked** — post-publish mutations guarded by `isLocked`; if `isLocked = true` the PATCH returns `403`
+- **Not pre-filled from previous day** — external dish links change daily; admin adds them fresh each time
+- **On the home page** — shown below the standard menu cards in both unlocked and locked states; links always remain clickable regardless of lock state
+
+### Publish validation
+
+A menu can be published if it has **at least one standard dish OR at least one external dish**. It is valid to publish a menu with only external dishes and no `MenuOfDayItem` records — for days when the whole office orders externally.
+
+```ts
+const hasItems = draftItems.some(i => i.name.trim() !== '' && i.price > 0)
+const hasExternalDishes = draftExternalDishes.length > 0
+
+if (!hasItems && !hasExternalDishes) {
+  // show inline error: "Thêm ít nhất một món ăn hoặc một món ăn ngoài trước khi đăng"
+}
+```
+
+### Zod validation schema
+
+```ts
+const externalDishItemSchema = z.object({
+  name: z.string().min(1),
+  orderUrl: z.string().url(),
+})
+
+const saveExternalDishesSchema = z.object({
+  externalDishes: z.array(externalDishItemSchema),
+})
+```
 
 ---
 
@@ -60,19 +112,23 @@ DRAFT ──→ PUBLISHED ──→ LOCKED
 Atomic — all steps succeed or none are applied:
 
 1. Set `MenuOfDay.isPublished = true`
-2. Create auto orders for eligible employees → `docs/domains/order.md`
-3. Post channel message to Slack: today's dishes + prices + order link
-4. Send Slack DMs to auto-order employees who have a `slackId`
+2. Create `MenuOfDayItem` records from draft items (may be empty array on external-dishes-only days)
+3. Store `externalDishes` JSON from draft
+4. Create auto orders for eligible employees (only runs if standard items exist) → `docs/domains/order.md`
+5. Post channel message to Slack: today's dishes + prices + order link
+6. Send Slack DMs to auto-order employees who have a `slackId`
 
 ### Transition: Published → Locked
 
 1. Set `MenuOfDay.isLocked = true`
 2. All order mutations (create / update / delete) are rejected
+3. External dish mutations (`PATCH /api/menu/[id]/external-dishes`) are also rejected
 
 ### Transition: Locked → Published (Unlock)
 
 1. Set `MenuOfDay.isLocked = false`
 2. Order mutations are allowed again
+3. External dish mutations are allowed again
 
 ### Ordering guard
 
@@ -114,20 +170,20 @@ type MenuSuggestion = {
 
 ## Menu Editing — Batch Store Pattern
 
-All menu editing happens in the frontend Zustand store. DB writes happen only on explicit save/publish actions.
+All edits (menu items and external dishes) happen in the frontend Zustand store before publish. DB writes happen only on explicit save/publish actions.
 
-### Pre-publish
+### Pre-publish (Screen 1)
 
-Admin fills in dishes in a spreadsheet-style table. On "Đăng thực đơn":
-- `POST /api/menu/publish` with full item list — single request
-- Server atomically creates `MenuOfDay` + all `MenuOfDayItem` records + auto orders + Slack
+Admin fills in standard dishes in the spreadsheet table and/or adds external dish links in the section below. All edits are store-only. On "Đăng thực đơn":
+- `POST /api/menu/publish` with `{ items, externalDishes }` — single request
+- Server atomically creates `MenuOfDay` + all `MenuOfDayItem` records + stores `externalDishes` + auto orders + Slack
+- Validation: at least one valid standard item OR at least one external dish required
 
-### Post-publish
+### Post-publish (Screen 2)
 
-Admin can continue editing the table inline. On "Lưu thay đổi":
-- `PATCH /api/menu/[id]/items` with full current item list — single request
-- Server diffs against existing DB records: upserts matching items, deletes removed items
-- If a removed item has orders → return 409 with blocked dish names
+**Standard items:** admin edits inline → "Lưu thay đổi" → `PATCH /api/menu/[id]/items` — single request. Server diffs: upserts matching items, deletes removed items. If a removed item has orders → return 409 with blocked dish names.
+
+**External dishes:** each add or remove writes directly to the DB — not store-buffered. Component derives the full new array and calls `PATCH /api/menu/[id]/external-dishes`. On success: invalidate `queryKeys.menu.today()`.
 
 ### MenuOfDayItem deletion guard
 
@@ -153,6 +209,8 @@ type PrefillItem = {
 }
 ```
 
+`externalDishes` are intentionally **not pre-filled** — they change daily and must be added fresh.
+
 ---
 
 ## API Response Shapes
@@ -165,6 +223,7 @@ type MenuOfDayResponse = {
   date: string           // ISO string
   isPublished: boolean
   isLocked: boolean
+  externalDishes: ExternalDishItem[]
   items: {
     id: string
     name: string
@@ -172,6 +231,12 @@ type MenuOfDayResponse = {
     sideDishes: string | null
   }[]
 }
+```
+
+Always cast `menu.externalDishes` from Prisma's `Json` type before including in the response:
+
+```ts
+externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? []
 ```
 
 ---

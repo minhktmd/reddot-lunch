@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { type MenuOfDayResponse, type MenuSuggestion, type TodayMenuResponse, type TodayOrderItem } from '@/domains/menu';
+import {
+  type ExternalDishItem,
+  type MenuOfDayResponse,
+  type MenuSuggestion,
+  type TodayMenuResponse,
+  type TodayOrderItem,
+} from '@/domains/menu';
 import { logger } from '@/shared/lib/logger';
 import { apiClient } from '@/shared/services/api';
 
@@ -15,12 +21,18 @@ const menuOfDayItemSchema = z.object({
   sideDishes: z.string().nullable(),
 });
 
+const externalDishItemSchema = z.object({
+  name: z.string(),
+  orderUrl: z.string(),
+});
+
 const menuOfDaySchema = z.object({
   id: z.string(),
   date: z.string(),
   isPublished: z.boolean(),
   isLocked: z.boolean(),
   items: z.array(menuOfDayItemSchema),
+  externalDishes: z.array(externalDishItemSchema),
 });
 
 const todayMenuSchema = z.discriminatedUnion('status', [
@@ -135,4 +147,21 @@ export async function getTodayOrders(): Promise<TodayOrderItem[]> {
     return [];
   }
   return result.data;
+}
+
+const saveExternalDishesResponseSchema = z.object({
+  externalDishes: z.array(externalDishItemSchema),
+});
+
+export async function saveExternalDishes(
+  menuId: string,
+  externalDishes: ExternalDishItem[],
+): Promise<ExternalDishItem[]> {
+  const response = await apiClient.patch<unknown>(`/api/menu/${menuId}/external-dishes`, { externalDishes });
+  const result = saveExternalDishesResponseSchema.safeParse(response.data);
+  if (!result.success) {
+    logger.error('[saveExternalDishes] Invalid response', result.error);
+    throw new Error('Phản hồi không hợp lệ');
+  }
+  return result.data.externalDishes;
 }

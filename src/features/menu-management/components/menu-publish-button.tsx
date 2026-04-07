@@ -12,11 +12,15 @@ export function MenuPublishButton() {
   const [confirming, setConfirming] = useState(false);
   const { mutate: publish, isPending } = usePublishMenu();
   const items = useMenuDraftStore((s) => s.items);
+  const externalDishes = useMenuDraftStore((s) => s.externalDishes);
 
   const handleClick = () => {
     const validItems = items.filter((i) => i.name.trim() && i.price > 0);
-    if (validItems.length === 0) {
-      toast.error('Cần ít nhất một món để đăng thực đơn');
+    const hasValidItems = validItems.length > 0;
+    const hasExternalDishes = externalDishes.length > 0;
+
+    if (!hasValidItems && !hasExternalDishes) {
+      toast.error('Thêm ít nhất một món ăn hoặc một món ăn ngoài trước khi đăng');
       return;
     }
     if (!confirming) {
@@ -29,6 +33,10 @@ export function MenuPublishButton() {
           name: item.name.trim(),
           price: item.price,
           sideDishes: item.sideDishes.trim() || undefined,
+        })),
+        externalDishes: externalDishes.map((d) => ({
+          name: d.name,
+          orderUrl: d.orderUrl,
         })),
       },
       { onSettled: () => setConfirming(false) },

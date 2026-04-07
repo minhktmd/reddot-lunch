@@ -22,14 +22,15 @@ model Employee {
 }
 
 model MenuOfDay {
-  id          String          @id @default(cuid())
-  date        DateTime        @unique // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
-  isPublished Boolean         @default(false)
-  isLocked    Boolean         @default(false)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  items       MenuOfDayItem[]
-  orders      Order[]
+  id             String          @id @default(cuid())
+  date           DateTime        @unique // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished    Boolean         @default(false)
+  isLocked       Boolean         @default(false)
+  externalDishes Json            @default("[]") // ExternalDishItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  items          MenuOfDayItem[]
+  orders         Order[]
 
   @@map("menu_of_days")
 }

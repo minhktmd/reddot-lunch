@@ -212,6 +212,8 @@ app/ → features/ → domains/ → shared/
 - ❌ Insert `AppConfig` — always upsert with `where: { id: "singleton" }`
 - ❌ Use `Promise.all` for fan-out Slack DMs — use `Promise.allSettled` so one failure doesn't block others
 - ❌ Reference `MenuItem` — that entity does not exist in this project; dish names are stored directly on `MenuOfDayItem.name`
+- ❌ Create a separate DB table for external dishes — they are a `Json` column on `MenuOfDay`; no Order, no isPaid, no quantity tracking for external dishes
+- ❌ Block publish when only external dishes exist and no standard items — a menu with only external dishes is valid
 
 ---
 
@@ -390,6 +392,7 @@ Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClie
 - Soft delete for employees: always set `isActive = false` — never `delete`
 - Timezone: always use `getTodayUTC()` from `src/domains/menu/lib/date.ts` for date boundaries
 - There is **no `MenuItem` model** — do not create or reference one
+- `MenuOfDay.externalDishes` is a `Json` column storing `ExternalDishItem[]` — always cast with `as ExternalDishItem[]` when reading; never create a separate DB table for external dishes
 
 ### Price & Date Formatting
 
@@ -434,14 +437,15 @@ model Employee {
 }
 
 model MenuOfDay {
-  id          String          @id @default(cuid())
-  date        DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
-  isPublished Boolean         @default(false)
-  isLocked    Boolean         @default(false)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  items       MenuOfDayItem[]
-  orders      Order[]
+  id              String          @id @default(cuid())
+  date            DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished     Boolean         @default(false)
+  isLocked        Boolean         @default(false)
+  externalDishes  Json            @default("[]")  // ExternalDishItem[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           MenuOfDayItem[]
+  orders          Order[]
 
   @@map("menu_of_days")
 }

@@ -1,3 +1,8 @@
+export type ExternalDishItem = {
+  name: string;
+  orderUrl: string;
+};
+
 export type MenuOfDayItemResponse = {
   id: string;
   name: string;
@@ -11,6 +16,7 @@ export type MenuOfDayResponse = {
   isPublished: boolean;
   isLocked: boolean;
   items: MenuOfDayItemResponse[];
+  externalDishes: ExternalDishItem[];
 };
 
 export type PrefillItem = {

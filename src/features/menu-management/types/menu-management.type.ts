@@ -5,11 +5,21 @@ export type DraftItem = {
   sideDishes: string;
 };
 
+export type DraftExternalDish = {
+  tempId: string;
+  name: string;
+  orderUrl: string;
+};
+
 export type PublishMenuInput = {
   items: {
     name: string;
     price: number;
     sideDishes?: string;
+  }[];
+  externalDishes: {
+    name: string;
+    orderUrl: string;
   }[];
 };
 

@@ -11,7 +11,7 @@
 Single page with three concerns:
 
 1. **Name selection** — first visit only; subsequent visits skip straight to the order form
-2. **Order tab** — view today's menu, place/edit/cancel orders
+2. **Order tab** — view today's menu (standard dishes + external dish links), place/edit/cancel orders
 3. **Payment tab** — view all unpaid orders, pay all at once via QR code
 
 Auto order toggle lives as a small persistent setting below the tabs.
@@ -38,7 +38,7 @@ Shown when `localStorage` has no `selectedEmployeeId` or the stored ID no longer
 
 ### Screen 2 — Main Page (returning visits)
 
-Header shows selected employee name + a small "Đổi người đặt" link to reset `localStorage` and return to Screen 1.
+Header shows selected employee name + a small "Đổi tên" link to reset `localStorage` and return to Screen 1.
 
 Two tabs: **Đặt cơm** (Order) and **Thanh toán** (Payment).
 
@@ -59,7 +59,7 @@ Shown when `GET /api/menu/today` returns `null` or `isPublished = false`.
 
 #### State B — Menu published, not locked
 
-Show today's meal portions as a list of cards. Each card:
+**Standard menu cards** — shown only when `items.length > 0`. Each card:
 - Dish name
 - Price (formatted: `45.000đ`)
 - Side dishes (if any)
@@ -76,12 +76,35 @@ Employee's existing orders for today shown below the menu cards:
 - **Hủy**: confirm dialog → `DELETE /api/orders/[id]`
 - Optimistic UI — order list updates immediately on submit, reverts on error
 
+**External dishes section** — shown when `externalDishes.length > 0`, below the standard section:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Món ăn ngoài
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Bún sườn chua — Trần Huy Liệu
+[👉 Đặt tại đây ↗]
+
+Cơm tấm Kiều Giang
+[👉 Đặt tại đây ↗]
+```
+
+- Each item shows the dish name and a link button that opens `orderUrl` in a new tab (`target="_blank" rel="noopener noreferrer"`)
+- Read-only — no interaction beyond clicking the link
+- No ordering, no payment tracking — employee transacts entirely outside the system
+
+**External-dishes-only day** — when `items.length === 0` and `externalDishes.length > 0`:
+- Standard menu cards section and order list are hidden entirely
+- Only the external dishes section is shown
+- No "Đặt món" button, no order list — there is nothing to order through the system
+
 #### State C — Menu locked
 
 Same as State B but:
 - No "Đặt món" button
-- No "Sửa" / "Hủy" actions
+- No "Sửa" / "Hủy" actions on orders
 - Read-only banner: `"Admin đã chốt sổ. Không thể thay đổi đơn hàng."`
+- External dishes section remains visible and links remain clickable — locking does not affect display-only links
 
 ---
 
@@ -119,24 +142,29 @@ Always visible below the tabs, regardless of which tab is active.
 
 - Reflects current `Employee.autoOrder` value
 - On toggle: `PATCH /api/employees/[id]` with `{ autoOrder: boolean }` — fire and forget, optimistic update
-- Small helper text: `"Hệ thống sẽ tự đặt một món ngẫu nhiên hàng ngày khi admin đăng thực đơn"`
+- Small helper text: `"Hệ thống sẽ tự đặt một món ngẫu nhiên khi admin đăng thực đơn"`
+- Auto order only applies to standard menu items — external dishes are never auto-ordered
 
 ---
 
 ## User Stories
 
-- [x] US1: First-time visitor sees name selection screen and can select their name to proceed
-- [x] US2: Returning visitor lands directly on the order form without seeing name selection
-- [x] US3: Employee can see today's menu when it has been published
-- [x] US4: Employee can place an order for a meal portion
-- [x] US5: Employee can place multiple orders on the same day (different dishes)
-- [x] US6: Employee can edit quantity or change dish of an existing order
-- [x] US7: Employee can cancel an existing order
-- [x] US8: Employee sees read-only view with locked banner when admin has locked orders
-- [x] US9: Employee sees all unpaid orders across history in the Payment tab
-- [x] US10: Employee can confirm payment — all unpaid orders marked as paid at once
-- [x] US11: Employee can toggle auto order on/off — persisted immediately
-- [x] US12: Employee can switch to a different name via "Đổi người đặt"
+- [ ] US1: First-time visitor sees name selection screen and can select their name to proceed
+- [ ] US2: Returning visitor lands directly on the order form without seeing name selection
+- [ ] US3: Employee can see today's menu when it has been published
+- [ ] US4: Employee can place an order for a meal portion
+- [ ] US5: Employee can place multiple orders on the same day (different dishes)
+- [ ] US6: Employee can edit quantity or change dish of an existing order
+- [ ] US7: Employee can cancel an existing order
+- [ ] US8: Employee sees read-only view with locked banner when admin has locked orders
+- [ ] US9: Employee sees all unpaid orders across history in the Payment tab
+- [ ] US10: Employee can confirm payment — all unpaid orders marked as paid at once
+- [ ] US11: Employee can toggle auto order on/off — persisted immediately
+- [ ] US12: Employee can switch to a different name via "Đổi tên"
+- [x] US13: Employee sees external dish links when any are available for today
+- [x] US14: Clicking an external dish link opens the delivery platform in a new tab
+- [x] US15: External dish links remain visible and clickable when orders are locked
+- [x] US16: On an external-dishes-only day, employee sees only external dish links — no standard menu cards or order list
 
 ---
 
@@ -154,6 +182,8 @@ Always visible below the tabs, regardless of which tab is active.
 | Confirm payment | PATCH | `/api/orders/pay` | `{ employeeId }` |
 | Toggle auto order | PATCH | `/api/employees/[id]` | `{ autoOrder: boolean }` |
 
+`GET /api/menu/today` response includes `externalDishes: { name: string, orderUrl: string }[]` — no extra API call needed for the external dishes section.
+
 ---
 
 ## Component Structure
@@ -162,12 +192,13 @@ Always visible below the tabs, regardless of which tab is active.
 features/home/
 ├── components/
 │   ├── home-name-select.tsx       — Screen 1: name selection
-│   ├── home-header.tsx            — Selected name + "Đổi người đặt" link
+│   ├── home-header.tsx            — Selected name + "Đổi tên" link
 │   ├── home-tabs.tsx              — Tab switcher (Đặt cơm / Thanh toán)
 │   ├── order-tab.tsx              — Tab: Đặt cơm (orchestrates states A/B/C)
 │   ├── order-menu-card.tsx        — Single meal portion card with "Đặt món" button
 │   ├── order-form.tsx             — Place/edit order form (quantity + item select)
 │   ├── order-list.tsx             — Today's orders table with edit/cancel actions
+│   ├── order-external-dishes.tsx  — External dish links section (name + link button per item)
 │   ├── payment-tab.tsx            — Tab: Thanh toán (orchestrates states A/B)
 │   ├── payment-table.tsx          — Unpaid orders table
 │   ├── payment-qr.tsx             — QR code image + total amount + confirm button
@@ -193,7 +224,6 @@ features/home/
 `selectedEmployeeId` is the only persistent client state:
 
 ```ts
-// src/features/home/stores/home.store.ts
 const STORAGE_KEY = "selectedEmployeeId"
 
 export const useHomeStore = create<HomeStore>((set) => ({
@@ -215,7 +245,10 @@ All server state (menu, orders, employees) managed by TanStack Query.
 
 ## Notes
 
-- **Polling:** `use-today-menu` and `use-today-orders` should refetch every 30s — the menu state (`isPublished`, `isLocked`) can change while the employee has the page open
+- **Polling:** `use-today-menu` and `use-today-orders` should refetch every 30s — the menu state (`isPublished`, `isLocked`, `externalDishes`) can change while the employee has the page open
 - **QR code:** if `AppConfig.qrCodeUrl` is null, hide the QR section entirely — do not show a broken image
 - **Price formatting:** always display VND amounts as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`)
 - **Date display:** use `dd/MM/yyyy` format throughout (e.g. `04/04/2026`)
+- **External dishes:** sourced from `use-today-menu` response — no separate hook or API call needed; entire section hidden when `externalDishes` is empty
+- **External dish links:** always `target="_blank" rel="noopener noreferrer"`
+- **External-dishes-only day:** when `items.length === 0`, skip rendering standard menu cards and order list entirely — show only the external dishes section with a note that ordering is done externally

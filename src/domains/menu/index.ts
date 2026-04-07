@@ -1,5 +1,6 @@
 export { getTodayUTC, parseDateParam } from './lib/date';
 export type {
+  ExternalDishItem,
   MenuOfDayItemResponse,
   MenuOfDayResponse,
   PrefillItem,

@@ -4,6 +4,8 @@ import { getTodayUTC } from '@/domains/menu';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 
+import type { ExternalDishItem } from '@/domains/menu';
+
 export async function GET() {
   try {
     const today = getTodayUTC();
@@ -27,6 +29,7 @@ export async function GET() {
             price: item.price,
             sideDishes: item.sideDishes,
           })),
+          externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? [],
         },
       });
     }
