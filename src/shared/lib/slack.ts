@@ -16,7 +16,7 @@ export async function postChannel(message: string): Promise<void> {
 
 export async function postDM(slackId: string, message: string): Promise<void> {
   try {
-    await fetch('https://slack.com/api/chat.postMessage', {
+    const res = await fetch('https://slack.com/api/chat.postMessage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -24,6 +24,10 @@ export async function postDM(slackId: string, message: string): Promise<void> {
       },
       body: JSON.stringify({ channel: slackId, text: message }),
     });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    if (!data.ok) {
+      logger.error('[slack] postDM rejected', { slackId, error: data.error });
+    }
   } catch (error) {
     logger.error('[slack] postDM failed', { slackId, error });
   }
