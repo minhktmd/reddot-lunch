@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { ThemeToggle } from '@/shared/components/atoms/theme-toggle';
 
 type HomeHeaderProps = {
@@ -12,7 +14,7 @@ export function HomeHeader({ employeeName, onChangeName }: HomeHeaderProps) {
     <header className="bg-card border-b px-4 py-3">
       <div className="mx-auto flex max-w-2xl items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xl">🍱</span>
+          <Image src="/reddot-logo.png" alt="Reddot" width={28} height={28} className="h-7 w-auto" />
           <span className="font-semibold">{employeeName}</span>
         </div>
         <div className="flex items-center gap-2">

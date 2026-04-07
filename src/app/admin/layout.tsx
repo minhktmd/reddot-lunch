@@ -2,6 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { LayoutDashboard, UtensilsCrossed, Users, BarChart2, Settings } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback } from 'react';
@@ -31,8 +32,9 @@ function DesktopSidebar({ pathname, onPrefetch }: { pathname: string; onPrefetch
   return (
     <aside className="md:border-border md:bg-card hidden md:flex md:w-60 md:flex-col md:border-r">
       <div className="border-border flex h-14 items-center justify-between border-b px-4">
-        <Link href="/admin" className="text-lg font-semibold">
-          Admin
+        <Link href="/admin" className="flex items-center gap-2">
+          <Image src="/reddot-logo.png" alt="Reddot" width={28} height={28} className="h-7 w-auto" />
+          <span className="text-lg font-semibold">Admin</span>
         </Link>
         <ThemeToggle />
       </div>
