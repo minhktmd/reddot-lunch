@@ -4,7 +4,7 @@
 > Domain knowledge → `docs/domains/menu.md`, `docs/domains/order.md`.
 > Route: `/admin/menu`
 >
-> ⚠️ **Latency note:** The app runs on Supabase free tier with 3–4s API latency. All menu editing must happen in the Zustand store first. DB writes happen only on explicit "Đăng thực đơn" or "Lưu thay đổi" actions — never per row edit.
+> ⚠️ **Design note:** All menu editing must happen in the Zustand store first. DB writes happen only on explicit "Đăng thực đơn" or "Lưu thay đổi" actions — never per row edit.
 
 ---
 

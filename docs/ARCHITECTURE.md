@@ -15,8 +15,8 @@ Browser
   └── Next.js (Vercel)
         ├── React components (client-side)
         └── API Route Handlers (server-side)
-              ├── Prisma → Supabase PostgreSQL
-              ├── Supabase Storage (QR code)
+              ├── Prisma → Prisma Postgres (via Accelerate)
+              ├── Vercel Blob (QR code)
               └── Slack API
 ```
 
@@ -48,7 +48,7 @@ Business logic is never written inside route handlers. It lives in:
 | Route handler | `src/app/api/` | Parse request, validate input, call service, return response |
 | Feature service | `src/features/*/services/` | Business logic specific to one feature |
 | Domain service | `src/domains/*/services/` | Business logic shared across multiple features |
-| Shared lib | `src/shared/lib/` | External integrations: Prisma, Slack, Supabase |
+| Shared lib | `src/shared/lib/` | External integrations: Prisma, Slack, Vercel Blob |
 
 ### Why not a separate backend?
 
@@ -59,7 +59,7 @@ Business logic is never written inside route handlers. It lives in:
 
 ---
 
-## Database — Supabase PostgreSQL via Prisma
+## Database — Prisma Postgres via Prisma Accelerate
 
 ### Why Prisma
 
@@ -75,22 +75,28 @@ Next.js dev server hot-reloads frequently, which would create multiple `PrismaCl
 ```ts
 // src/shared/lib/prisma.ts
 import { PrismaClient } from "@prisma/client"
+import { withAccelerate } from "@prisma/extension-accelerate"
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+const globalForPrisma = globalThis as unknown as {
+  prisma: ReturnType<typeof makePrisma> | undefined
+}
 
-export const prisma =
-  globalForPrisma.prisma ?? new PrismaClient()
+function makePrisma() {
+  return new PrismaClient().$extends(withAccelerate())
+}
+
+export const prisma = globalForPrisma.prisma ?? makePrisma()
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 ```
 
-Always import `prisma` from `@/shared/lib/prisma` — never instantiate `PrismaClient` elsewhere.
+Always import `prisma` from `@/shared/lib/prisma` — never instantiate `PrismaClient` elsewhere. Prisma Postgres requires the `withAccelerate()` extension — never create a bare `PrismaClient` without it.
 
-### Why Supabase for PostgreSQL
+### Why Prisma Postgres
 
-- Free tier PostgreSQL with no time limit
-- Works seamlessly with Prisma via `DATABASE_URL`
-- Same platform also provides Storage (QR code) — one less service to manage
+- No cold start — eliminates the 3–4s latency that plagued the previous Supabase free tier setup
+- Same platform as Prisma ORM — seamless integration via `DATABASE_URL`
+- Optimized for serverless — built-in connection pooling via Prisma Accelerate
 
 ---
 
@@ -197,27 +203,27 @@ If Slack is down or a DM fails, the publish operation still succeeds. Slack erro
 
 ---
 
-## Supabase Storage — QR Code
+## Vercel Blob — QR Code
 
 ### Pattern
 
-One fixed path: `qr-codes/payment-qr.png`. Every upload overwrites this file.
+One fixed path: `payment-qr`. Every upload overwrites this file via `addRandomSuffix: false`.
 
 ```ts
-// src/shared/lib/supabase.ts
+// src/shared/lib/blob.ts
 export async function uploadQRCode(file: File): Promise<string> {
-  const { error } = await supabase.storage
-    .from("qr-codes")
-    .upload("payment-qr.png", file, { upsert: true })
-  if (error) throw error
-  const { data } = supabase.storage.from("qr-codes").getPublicUrl("payment-qr.png")
-  return `${data.publicUrl}?t=${Date.now()}`  // cache-bust
+  const { url } = await put("payment-qr", file, {
+    access: "public",
+    token: env.BLOB_READ_WRITE_TOKEN,
+    addRandomSuffix: false,
+  })
+  return `${url}?t=${Date.now()}`  // cache-bust
 }
 ```
 
 ### Why `?t=timestamp` on the URL
 
-Browsers aggressively cache images by URL. Since the filename never changes (`payment-qr.png`), without cache-busting the browser would show the old QR image after an upload. Appending the upload timestamp forces a fresh fetch.
+Browsers aggressively cache images by URL. Since the filename never changes, without cache-busting the browser would show the old QR image after an upload. Appending the upload timestamp forces a fresh fetch.
 
 ---
 

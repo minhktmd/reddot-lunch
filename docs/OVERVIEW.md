@@ -11,9 +11,7 @@
 
 **Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
-**Platform:** Web (mobile-first). Hosted on Vercel + Supabase (free tier).
-
-> ⚠️ **Infrastructure note:** The app runs on Supabase free tier which has significant cold-start and connection latency — typically 3–4 seconds per API request. All design decisions around data fetching and mutation must account for this. Prefer batch operations over sequential requests. Never trigger an API call per user keystroke or per row edit.
+**Platform:** Web (mobile-first). Hosted on Vercel + Prisma Postgres + Vercel Blob.
 
 ---
 
@@ -131,7 +129,7 @@ Note: F8 (MenuItem Management) has been removed. There is no dish catalog to man
 ```
 # Config
 GET    /api/config                        — Get AppConfig (qrCodeUrl)
-POST   /api/config/qr                     — Upload new QR image to Supabase Storage, update AppConfig
+POST   /api/config/qr                     — Upload new QR image to Vercel Blob, update AppConfig
 
 # Employees
 GET    /api/employees                     — List active employees
@@ -200,7 +198,7 @@ src/
     ├── lib/
     │   ├── prisma.ts                     → Prisma client singleton
     │   ├── slack.ts                      → postChannel(), postDM(), getAdminSlackIds()
-    │   └── supabase.ts                   → Supabase client for storage operations
+    │   └── blob.ts                       → Vercel Blob upload helper (QR code)
     ├── constants/query-keys.ts
     └── providers/
 ```
@@ -212,8 +210,8 @@ src/
 | Service | Purpose | Tier |
 |---|---|---|
 | Vercel | Next.js hosting + Cron Jobs | Free |
-| Supabase | PostgreSQL database | Free (cold-start latency 3–4s) |
-| Supabase Storage | QR code image (`qr-codes/payment-qr.png`) | Free |
+| Prisma Postgres | PostgreSQL database (via Prisma Accelerate) | Free |
+| Vercel Blob | QR code image (`payment-qr`) | Free |
 | Slack Incoming Webhook | Channel posts | Free |
 | Slack Bot API | Direct messages (`chat.postMessage`) | Free |
 
@@ -222,11 +220,8 @@ src/
 ## Environment Variables
 
 ```env
-DATABASE_URL="postgresql://..."
-SUPABASE_URL="https://[ref].supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="eyJ..."
-NEXT_PUBLIC_SUPABASE_URL="https://[ref].supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..."
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=..."
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 SLACK_BOT_TOKEN="xoxb-..."
 SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 SLACK_CHANNEL_ID="C0XXXXXXX"

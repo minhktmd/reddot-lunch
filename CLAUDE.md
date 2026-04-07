@@ -6,7 +6,7 @@
 
 **Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
-> ⚠️ **Infrastructure constraint:** The app runs on **Supabase free tier** which has significant cold-start and connection latency — typically **3–4 seconds per API request**. This is a hard constraint that shapes many design decisions. Key rules that follow from this:
+> ⚠️ **Infrastructure constraint:** The app runs on **Prisma Postgres (via Prisma Accelerate)** for the database and **Vercel Blob** for file storage. Key rules:
 > - **Never trigger an API call per user action in menu editing** — buffer all changes in the Zustand store and batch into a single request on explicit save/publish
 > - **Prefer batch operations** over sequential requests anywhere in the codebase
 > - When in doubt: fewer round-trips is always better
@@ -28,8 +28,8 @@
 | Notifications | Sonner                                        |
 | HTTP Client   | `shared/services/api.ts` — custom fetch wrapper |
 | ORM           | Prisma                                        |
-| Database      | PostgreSQL via Supabase                       |
-| File Storage  | Supabase Storage (QR code image)              |
+| Database      | Prisma Postgres (via Prisma Accelerate)       |
+| File Storage  | Vercel Blob (QR code image)                   |
 | Slack         | Incoming Webhook + `chat.postMessage`         |
 | Scheduling    | Vercel Cron Jobs                              |
 | Package Manager | pnpm                                        |
@@ -92,7 +92,7 @@ src/
 │   │   └── templates/          → AppShell, AdminLayout...
 │   ├── constants/              → App-wide constants + query-keys.ts
 │   ├── hooks/                  → Cross-feature hooks (useDebounce, useMediaQuery...)
-│   ├── lib/                    → Wrappers: cn, logger, prisma, slack, supabase
+│   ├── lib/                    → Wrappers: cn, logger, prisma, slack, blob
 │   ├── services/               → Base HTTP service (api.ts)
 │   ├── stores/                 → Global Zustand stores (if any)
 │   ├── utils/                  → Pure functions (format, parse, transform...)
@@ -199,7 +199,7 @@ app/ → features/ → domains/ → shared/
 - ❌ Leave `console.log` in committed code — use the logger or remove debug statements
 - ❌ Silently swallow errors in `catch` blocks — always at minimum `logger.error` them
 
-**Performance (critical — Supabase free tier has 3–4s latency):**
+**Performance:**
 
 - ❌ Trigger API calls per user action in menu editing — all edits are store-only until explicit save/publish
 - ❌ Use sequential `await` calls when parallel `Promise.all` would work
@@ -337,7 +337,7 @@ Dependency direction: `templates → organisms → molecules → atoms` (never r
 - **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s (`refetchInterval: 30_000`)
 - **Batch writes:** menu editing never triggers per-action API calls — all buffered in store, saved in one request
 
-**Prefetch strategy (critical for perceived performance on Supabase free tier):**
+**Prefetch strategy:**
 
 Two APIs are prefetched proactively to eliminate first-load spinners on the most-visited pages:
 
@@ -357,7 +357,7 @@ All other APIs are fetched lazily when their page/component mounts — do not pr
 - Hover "Tổng quan" (`/admin`) → `queryClient.prefetchQuery(queryKeys.orders.today())`
 - Hover "Thực đơn hôm nay" (`/admin/menu`) → `queryClient.prefetchQuery(queryKeys.menu.suggestions())`
 
-Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClient.prefetchQuery(...)`. The ~200–300ms between hover and click is usually enough for the cache to populate on a warm Supabase connection.
+Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClient.prefetchQuery(...)`. The ~200–300ms between hover and click is usually enough for the cache to populate.
 
 → Use skill `service-pattern` for base service boilerplate, safeParse pattern, and mutation boilerplate
 
@@ -385,6 +385,7 @@ Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClie
 ### Prisma
 
 - Always import from `@/shared/lib/prisma` — never instantiate `PrismaClient` directly in features
+- Never instantiate `PrismaClient` without the `withAccelerate()` extension — Prisma Postgres requires it
 - `AppConfig`: always `upsert` with `where: { id: "singleton" }` — never `create`
 - Soft delete for employees: always set `isActive = false` — never `delete`
 - Timezone: always use `getTodayUTC()` from `src/domains/menu/lib/date.ts` for date boundaries

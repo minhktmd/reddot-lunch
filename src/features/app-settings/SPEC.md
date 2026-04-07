@@ -46,7 +46,7 @@ Cập nhật: 12/03/2026 lúc 09:15
 2. Admin selects image → client-side preview shown immediately via `URL.createObjectURL`
 3. "Xác nhận tải lên" button appears below preview
 4. Admin confirms → `POST /api/config/qr` with `FormData` containing the image file
-5. Server uploads to Supabase Storage at `qr-codes/payment-qr.png` (overwrites existing)
+5. Server uploads to Vercel Blob at `payment-qr` (overwrites existing)
 6. Server upserts `AppConfig.qrCodeUrl` with the new public URL
 7. UI shows new image + updated timestamp
 
@@ -81,7 +81,7 @@ type AppConfigResponse = {
 ### POST /api/config/qr
 
 - Accepts `multipart/form-data` with a single `file` field
-- Server: upload to Supabase Storage → upsert `AppConfig.qrCodeUrl`
+- Server: upload to Vercel Blob → upsert `AppConfig.qrCodeUrl`
 - Max file size: 2MB — reject with `400` if exceeded
 - Returns updated `AppConfigResponse`
 
@@ -106,5 +106,5 @@ features/app-settings/
 
 - **Overwrite, not versioned** — each upload replaces `qr-codes/payment-qr.png`; no history kept
 - **Cache busting** — after upload, append `?t={Date.now()}` to the URL to prevent browser caching the old image
-- **Supabase helper** — upload logic in `shared/lib/supabase.ts` as `uploadQRCode(file: File): Promise<string>`
+- **Vercel Blob helper** — upload logic in `shared/lib/blob.ts` as `uploadQRCode(file: File): Promise<string>`
 - **No other settings for now** — page can be extended later; currently only manages the QR code

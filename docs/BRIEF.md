@@ -97,7 +97,8 @@ Admin employees (role = "admin") receive admin-targeted notifications if they ha
 
 Everything must run on free tier:
 - **Vercel** — hosting + cron jobs
-- **Supabase** — PostgreSQL + file storage for QR code image
+- **Prisma Postgres** — PostgreSQL database (via Prisma Accelerate)
+- **Vercel Blob** — file storage for QR code image
 - **Slack** — Incoming Webhook (channel posts) + Bot API (DMs)
 
 ---
@@ -106,7 +107,7 @@ Everything must run on free tier:
 
 - No authentication of any kind — all routes are public
 - No separate Payment entity — payment state is `isPaid` + `paidAt` directly on each Order
-- One QR code image for the whole app, stored in Supabase Storage, replaced on upload
+- One QR code image for the whole app, stored in Vercel Blob, replaced on upload
 - `AppConfig` is a singleton row in the DB (id = "singleton")
 - Timezone: Asia/Ho_Chi_Minh (UTC+7) — all "today" logic must respect this
 - All code and file names in English; all UI strings shown to users in Vietnamese
