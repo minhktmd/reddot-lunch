@@ -4,9 +4,10 @@ import type { TodayAdminOrder } from '../types/admin-dashboard.type';
 
 type Props = {
   orders: TodayAdminOrder[];
+  totalOrderedAmount: number;
 };
 
-export function DashboardOrderList({ orders }: Props) {
+export function DashboardOrderList({ orders, totalOrderedAmount }: Props) {
   if (orders.length === 0) {
     return <p className="text-sm text-muted-foreground">Chưa có ai đặt món.</p>;
   }
@@ -34,6 +35,14 @@ export function DashboardOrderList({ orders }: Props) {
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="border-t border-border">
+            <td className="pt-2" />
+            <td className="pt-2" />
+            <td className="pt-2" />
+            <td className="pt-2 text-right font-bold text-foreground">{formatPrice(totalOrderedAmount)}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
