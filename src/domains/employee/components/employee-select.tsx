@@ -44,16 +44,12 @@ export function EmployeeSelect({
           aria-expanded={open}
           aria-label={placeholder}
           className={cn(
-            'inline-flex h-11 w-full items-center justify-between rounded-md border border-border bg-transparent px-4 text-left text-sm transition-colors hover:bg-muted',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            'border-border hover:bg-muted inline-flex h-11 w-full items-center justify-between rounded-md border bg-transparent px-4 text-left text-sm transition-colors',
+            'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
             'disabled:pointer-events-none disabled:opacity-50'
           )}
         >
-          {selectedEmployee ? (
-            selectedEmployee.name
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
+          {selectedEmployee ? selectedEmployee.name : <span className="text-muted-foreground">{placeholder}</span>}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </span>
       </PopoverTrigger>

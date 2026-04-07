@@ -27,14 +27,14 @@ export function EmployeeRow({ employee, onEdit }: EmployeeRowProps) {
 
   return (
     <>
-      <tr className={cn('border-b border-border transition-colors hover:bg-muted/50', isInactive && 'opacity-50')}>
-        <td className="px-4 py-3 text-sm font-medium text-foreground">{employee.name}</td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">{employee.email ?? '—'}</td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">{employee.slackId ?? '—'}</td>
-        <td className="px-4 py-3 text-sm text-muted-foreground">
+      <tr className={cn('border-border hover:bg-muted/50 border-b transition-colors', isInactive && 'opacity-50')}>
+        <td className="text-foreground px-4 py-3 text-sm font-medium">{employee.name}</td>
+        <td className="text-muted-foreground px-4 py-3 text-sm">{employee.email ?? '—'}</td>
+        <td className="text-muted-foreground px-4 py-3 text-sm">{employee.slackId ?? '—'}</td>
+        <td className="text-muted-foreground px-4 py-3 text-sm">
           {employee.role === EMPLOYEE_ROLE.ADMIN ? 'Admin' : 'Thành viên'}
         </td>
-        <td className="px-4 py-3 text-center text-sm text-muted-foreground">{employee.autoOrder ? '✓' : '—'}</td>
+        <td className="text-muted-foreground px-4 py-3 text-center text-sm">{employee.autoOrder ? '✓' : '—'}</td>
         <td className="px-4 py-3 text-sm">
           <span
             className={cn(

@@ -29,8 +29,8 @@ function isActive(pathname: string, href: string) {
 
 function DesktopSidebar({ pathname, onPrefetch }: { pathname: string; onPrefetch: (href: string) => void }) {
   return (
-    <aside className="hidden md:flex md:w-60 md:flex-col md:border-r md:border-border md:bg-card">
-      <div className="flex h-14 items-center justify-between border-b border-border px-4">
+    <aside className="md:border-border md:bg-card hidden md:flex md:w-60 md:flex-col md:border-r">
+      <div className="border-border flex h-14 items-center justify-between border-b px-4">
         <Link href="/admin" className="text-lg font-semibold">
           Admin
         </Link>
@@ -61,7 +61,7 @@ function DesktopSidebar({ pathname, onPrefetch }: { pathname: string; onPrefetch
 
 function MobileBottomNav({ pathname, onPrefetch }: { pathname: string; onPrefetch: (href: string) => void }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card md:hidden">
+    <nav className="border-border bg-card fixed inset-x-0 bottom-0 z-50 border-t md:hidden">
       <div className="flex items-center justify-around">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
@@ -96,7 +96,7 @@ function usePrefetchHandlers() {
         queryClient.prefetchQuery({ queryKey: queryKeys.menu.suggestions, queryFn: getMenuSuggestions });
       }
     },
-    [queryClient],
+    [queryClient]
   );
 
   return handlePrefetch;
@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const handlePrefetch = usePrefetchHandlers();
 
   return (
-    <div className="flex h-dvh bg-background">
+    <div className="bg-background flex h-dvh">
       <DesktopSidebar pathname={pathname} onPrefetch={handlePrefetch} />
       <main className="flex-1 overflow-y-auto pb-16 md:pb-0">{children}</main>
       <MobileBottomNav pathname={pathname} onPrefetch={handlePrefetch} />

@@ -28,7 +28,7 @@ export function ReportMonthSelector({ month, onMonthChange }: ReportMonthSelecto
       <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onMonthChange(shiftMonth(month, -1))}>
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="min-w-[160px] text-center text-lg font-semibold">{formatMonthLabel(month)}</span>
+      <span className="min-w-40 text-center text-lg font-semibold">{formatMonthLabel(month)}</span>
       <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => onMonthChange(shiftMonth(month, 1))}>
         <ChevronRight className="h-4 w-4" />
       </Button>

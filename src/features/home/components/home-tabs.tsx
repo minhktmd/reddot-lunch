@@ -3,7 +3,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-
 import { queryKeys } from '@/shared/constants/query-keys';
 import { cn } from '@/shared/lib/cn';
 
@@ -29,7 +28,7 @@ export function HomeTabs({ employeeId }: HomeTabsProps) {
 
   return (
     <div>
-      <div className="border-b bg-card">
+      <div className="bg-card border-b">
         <div className="mx-auto max-w-2xl px-4">
           <div className="flex gap-0">
             {(
@@ -45,7 +44,7 @@ export function HomeTabs({ employeeId }: HomeTabsProps) {
                   'cursor-pointer border-b-2 px-4 py-3 text-sm font-medium transition-colors',
                   activeTab === tab.id
                     ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    : 'text-muted-foreground hover:text-foreground border-transparent'
                 )}
               >
                 {tab.label}

@@ -39,18 +39,18 @@ export function MenuTable() {
       const newItem: DraftItem = { ...emptyRow, ...autoFill, ...patch };
       setItems([...items, newItem]);
     },
-    [emptyRow, items, setItems],
+    [emptyRow, items, setItems]
   );
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[600px] text-left">
-        <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="border-border overflow-x-auto rounded-lg border">
+      <table className="w-full min-w-150 text-left">
+        <thead className="border-border bg-muted text-muted-foreground border-b text-xs font-medium tracking-wide uppercase">
           <tr>
             <th className="px-4 py-3">Tên món</th>
-            <th className="px-4 py-3 w-32">Giá</th>
+            <th className="w-32 px-4 py-3">Giá</th>
             <th className="px-4 py-3">Món ăn kèm</th>
-            <th className="px-4 py-3 w-20" />
+            <th className="w-20 px-4 py-3" />
           </tr>
         </thead>
         <tbody>
@@ -83,19 +83,19 @@ type ReadonlyTableProps = {
 
 export function MenuTableReadonly({ items }: ReadonlyTableProps) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[600px] text-left">
-        <thead className="border-b border-border bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="border-border overflow-x-auto rounded-lg border">
+      <table className="w-full min-w-150 text-left">
+        <thead className="border-border bg-muted text-muted-foreground border-b text-xs font-medium tracking-wide uppercase">
           <tr>
             <th className="px-4 py-3">Tên món</th>
-            <th className="px-4 py-3 w-32">Giá</th>
+            <th className="w-32 px-4 py-3">Giá</th>
             <th className="px-4 py-3">Món ăn kèm</th>
           </tr>
         </thead>
         <tbody>
           {items.length === 0 ? (
             <tr>
-              <td colSpan={3} className="px-4 py-6 text-center text-sm text-muted-foreground">
+              <td colSpan={3} className="text-muted-foreground px-4 py-6 text-center text-sm">
                 Chưa có món nào.
               </td>
             </tr>

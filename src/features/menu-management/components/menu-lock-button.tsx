@@ -48,7 +48,7 @@ export function MenuLockButton({ menuId }: Props) {
           lock(menuId, { onSettled: () => setState('idle') });
         },
         onError: () => setState('idle'),
-      },
+      }
     );
   };
 

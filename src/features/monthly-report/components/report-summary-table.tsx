@@ -29,14 +29,14 @@ export function ReportSummaryTable({ rows, month }: ReportSummaryTableProps) {
   };
 
   if (rows.length === 0) {
-    return <p className="py-8 text-center text-muted-foreground">Không có dữ liệu cho tháng này</p>;
+    return <p className="text-muted-foreground py-8 text-center">Không có dữ liệu cho tháng này</p>;
   }
 
   return (
     <div className="overflow-x-auto rounded-lg border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b bg-muted/50">
+          <tr className="bg-muted/50 border-b">
             <th className="px-6 py-3 text-left font-medium">Tên</th>
             <th className="px-6 py-3 text-right font-medium">Số ngày</th>
             <th className="px-6 py-3 text-right font-medium">Số suất</th>

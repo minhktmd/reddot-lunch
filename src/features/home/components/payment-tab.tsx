@@ -17,7 +17,7 @@ export function PaymentTab({ employeeId }: PaymentTabProps) {
   const payAll = usePayAll(employeeId);
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Đang tải...</div>;
+    return <div className="text-muted-foreground py-12 text-center text-sm">Đang tải...</div>;
   }
 
   if (unpaidOrders.length === 0) {

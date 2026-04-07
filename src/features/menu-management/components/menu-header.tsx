@@ -50,7 +50,7 @@ export function MenuHeader({ status, menu, date }: Props) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <h2 className="text-lg font-semibold text-foreground">{formatDate(date)}</h2>
+        <h2 className="text-foreground text-lg font-semibold">{formatDate(date)}</h2>
         <MenuStatusBadge status={status} />
       </div>
       <div className="flex items-center gap-2">

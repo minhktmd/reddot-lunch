@@ -12,8 +12,6 @@ import { UnpayConfirmDialog } from './unpay-confirm-dialog';
 
 import type { EmployeePayment } from '../types/admin-dashboard.type';
 
-
-
 type Props = {
   paidEmployees: EmployeePayment[];
   unpaidEmployees: EmployeePayment[];
@@ -54,14 +52,14 @@ export function DashboardPaymentStatus({ paidEmployees, unpaidEmployees }: Props
 
   return (
     <div className="grid gap-6 md:grid-cols-2">
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-3 font-semibold text-foreground">
+      <div className="border-border bg-card rounded-lg border p-4">
+        <h2 className="text-foreground mb-3 font-semibold">
           Đã trả ({paidEmployees.length} người) — {formatPrice(totalPaidAmount)}
         </h2>
         <DashboardPaidList employees={paidEmployees} onUnpay={handleUnpayClick} isUnpaying={isPending} />
       </div>
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-3 font-semibold text-foreground">
+      <div className="border-border bg-card rounded-lg border p-4">
+        <h2 className="text-foreground mb-3 font-semibold">
           Chưa trả ({unpaidEmployees.length} người) — Còn nợ: {formatPrice(totalUnpaidAmount)}
         </h2>
         <DashboardUnpaidList employees={unpaidEmployees} />

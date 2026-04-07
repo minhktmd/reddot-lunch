@@ -6,13 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { EMPLOYEE_ROLE } from '@/domains/employee';
 import { Button } from '@/shared/components/atoms/button';
 import { Input } from '@/shared/components/atoms/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/atoms/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/atoms/select';
 
 import { useAddEmployee } from '../hooks/use-add-employee';
 import { addEmployeeSchema, type AddEmployeeInput } from '../types/employee-management.type';
@@ -38,7 +32,7 @@ export function EmployeeAddForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-wrap items-start gap-2 rounded-lg border border-border bg-muted p-4"
+      className="border-border bg-muted flex flex-wrap items-start gap-2 rounded-lg border p-4"
     >
       <div className="flex flex-col gap-1">
         <Input placeholder="Tên *" {...register('name')} className="w-40" />

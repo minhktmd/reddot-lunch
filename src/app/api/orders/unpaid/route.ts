@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
           name: order.menuOfDayItem.name,
           price: order.menuOfDayItem.price,
         },
-      })),
+      }))
     );
   } catch (error) {
     logger.error('[GET /api/orders/unpaid]', error);

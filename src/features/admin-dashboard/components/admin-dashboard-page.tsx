@@ -23,15 +23,10 @@ export function AdminDashboardPage() {
   const isLoading = isMenuLoading || isOrdersLoading;
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[200px] items-center justify-center text-muted-foreground">
-        Đang tải...
-      </div>
-    );
+    return <div className="text-muted-foreground flex min-h-50 items-center justify-center">Đang tải...</div>;
   }
 
-  const hasPublishedMenu =
-    menuResponse?.status === 'exists' && menuResponse.menu.isPublished;
+  const hasPublishedMenu = menuResponse?.status === 'exists' && menuResponse.menu.isPublished;
 
   if (!hasPublishedMenu) {
     return (
@@ -39,7 +34,7 @@ export function AdminDashboardPage() {
         <p className="text-muted-foreground">Hôm nay chưa có thực đơn.</p>
         <Link
           href="/admin/menu"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 text-sm font-medium"
         >
           Tạo thực đơn
         </Link>

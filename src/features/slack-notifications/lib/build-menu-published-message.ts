@@ -3,7 +3,7 @@ const TZ = 'Asia/Ho_Chi_Minh';
 export function buildMenuPublishedMessage(
   date: Date,
   items: { name: string; price: number; sideDishes: string | null }[],
-  appUrl: string,
+  appUrl: string
 ): string {
   const weekday = new Intl.DateTimeFormat('vi-VN', { timeZone: TZ, weekday: 'long' }).format(date);
   const dateStr = new Intl.DateTimeFormat('vi-VN', {

@@ -18,7 +18,7 @@ export function SettingsQRSection() {
   const { data: config, isLoading } = useAppConfig();
 
   if (isLoading) {
-    return <div className="py-8 text-center text-muted-foreground">Đang tải...</div>;
+    return <div className="text-muted-foreground py-8 text-center">Đang tải...</div>;
   }
 
   const hasQR = Boolean(config?.qrCodeUrl);
@@ -28,7 +28,7 @@ export function SettingsQRSection() {
     return (
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Mã QR thanh toán</h2>
-        <p className="text-sm text-muted-foreground">Chưa có mã QR.</p>
+        <p className="text-muted-foreground text-sm">Chưa có mã QR.</p>
         <SettingsQRUpload hasExistingQR={false} />
       </div>
     );
@@ -39,10 +39,10 @@ export function SettingsQRSection() {
       <h2 className="text-lg font-semibold">Mã QR thanh toán</h2>
       <div className="rounded-lg border p-4">
         {qrUrl && (
-          <img src={qrUrl} alt="Mã QR thanh toán" className="h-[200px] w-[200px] rounded-md border object-contain" />
+          <img src={qrUrl} alt="Mã QR thanh toán" className="h-50 w-50 rounded-md border object-contain" />
         )}
         {config?.updatedAt && (
-          <p className="mt-3 text-sm text-muted-foreground">Cập nhật: {formatUpdatedAt(config.updatedAt)}</p>
+          <p className="text-muted-foreground mt-3 text-sm">Cập nhật: {formatUpdatedAt(config.updatedAt)}</p>
         )}
         <div className="mt-4">
           <SettingsQRUpload hasExistingQR />

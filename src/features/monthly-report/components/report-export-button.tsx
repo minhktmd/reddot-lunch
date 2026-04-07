@@ -14,8 +14,7 @@ type ReportExportButtonProps = {
 function buildCsv(rows: MonthlyReportRow[]): string {
   const header = 'Tên,Số ngày,Số suất,Tổng tiền,Đã trả,Còn nợ';
   const lines = rows.map(
-    (r) =>
-      `${r.employee.name},${r.daysOrdered},${r.totalPortions},${r.totalAmount},${r.paidAmount},${r.unpaidAmount}`,
+    (r) => `${r.employee.name},${r.daysOrdered},${r.totalPortions},${r.totalAmount},${r.paidAmount},${r.unpaidAmount}`
   );
   return '\uFEFF' + [header, ...lines].join('\n');
 }

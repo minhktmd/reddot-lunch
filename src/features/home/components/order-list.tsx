@@ -52,11 +52,11 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
 
   return (
     <div className="mt-4">
-      <h3 className="mb-2 text-sm font-medium text-foreground">Đơn của bạn hôm nay</h3>
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <h3 className="text-foreground mb-2 text-sm font-medium">Đơn của bạn hôm nay</h3>
+      <div className="bg-card overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted text-left text-muted-foreground">
+            <tr className="bg-muted text-muted-foreground border-b text-left">
               <th className="px-4 py-2 font-medium">Món</th>
               <th className="px-4 py-2 font-medium">SL</th>
               <th className="px-4 py-2 font-medium">Thành tiền</th>
@@ -93,28 +93,30 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                       <div>
                         <span className="text-foreground">{order.menuOfDayItem.name}</span>
                         {order.isAutoOrder && (
-                          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">tự động</span>
+                          <span className="bg-muted text-muted-foreground ml-2 rounded px-1.5 py-0.5 text-xs">
+                            tự động
+                          </span>
                         )}
                       </div>
                     )}
                   </td>
                   <td className="px-4 py-2">
                     {isEditable ? (
-                      <div className="inline-flex items-center rounded-md border border-border">
+                      <div className="border-border inline-flex items-center rounded-md border">
                         <button
                           type="button"
                           onClick={() => setEditState((s) => s && { ...s, quantity: Math.max(1, s.quantity - 1) })}
                           disabled={currentQty <= 1}
-                          className="cursor-pointer px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                          className="text-muted-foreground hover:bg-muted cursor-pointer px-2.5 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label="Giảm số lượng"
                         >
                           −
                         </button>
-                        <span className="min-w-8 text-center text-sm font-medium text-foreground">{currentQty}</span>
+                        <span className="text-foreground min-w-8 text-center text-sm font-medium">{currentQty}</span>
                         <button
                           type="button"
                           onClick={() => setEditState((s) => s && { ...s, quantity: s.quantity + 1 })}
-                          className="cursor-pointer px-2.5 py-1 text-sm text-muted-foreground hover:bg-muted"
+                          className="text-muted-foreground hover:bg-muted cursor-pointer px-2.5 py-1 text-sm"
                           aria-label="Tăng số lượng"
                         >
                           +
@@ -124,12 +126,12 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                       <span className="text-foreground">{order.quantity}</span>
                     )}
                   </td>
-                  <td className="px-4 py-2 font-medium text-foreground">{formatPrice(currentPrice * currentQty)}</td>
+                  <td className="text-foreground px-4 py-2 font-medium">{formatPrice(currentPrice * currentQty)}</td>
                   {!isLocked && (
                     <td className="px-4 py-2">
                       {cancellingId === order.id ? (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Xác nhận hủy?</span>
+                          <span className="text-muted-foreground text-xs">Xác nhận hủy?</span>
                           <button
                             onClick={() => {
                               onCancel(order.id);
@@ -142,7 +144,7 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                           </button>
                           <button
                             onClick={() => setCancellingId(null)}
-                            className="cursor-pointer text-xs text-muted-foreground hover:underline"
+                            className="text-muted-foreground cursor-pointer text-xs hover:underline"
                           >
                             Không
                           </button>
@@ -158,7 +160,7 @@ export function OrderList({ orders, menuItems, isLocked, onEdit, onCancel, isEdi
                           </button>
                           <button
                             onClick={stopEditing}
-                            className="cursor-pointer text-xs text-muted-foreground hover:underline"
+                            className="text-muted-foreground cursor-pointer text-xs hover:underline"
                           >
                             Hủy
                           </button>

@@ -5,13 +5,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/atoms/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/atoms/select';
 import { formatPrice } from '@/shared/utils/format';
 
 import type { MenuOfDayItemResponse } from '@/domains/menu';
@@ -63,10 +57,10 @@ export function OrderForm({
   }, [defaultItemId, setValue]);
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-lg border bg-muted p-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="bg-muted rounded-lg border p-4">
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Chọn món</label>
+          <label className="text-muted-foreground mb-1 block text-sm font-medium">Chọn món</label>
           <Select
             value={selectedItemId}
             onValueChange={(val) => setValue('menuOfDayItemId', val, { shouldValidate: true })}
@@ -82,18 +76,16 @@ export function OrderForm({
               ))}
             </SelectContent>
           </Select>
-          {errors.menuOfDayItemId && (
-            <p className="mt-1 text-xs text-red-600">{errors.menuOfDayItemId.message}</p>
-          )}
+          {errors.menuOfDayItemId && <p className="mt-1 text-xs text-red-600">{errors.menuOfDayItemId.message}</p>}
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-muted-foreground">Số lượng</label>
+          <label className="text-muted-foreground mb-1 block text-sm font-medium">Số lượng</label>
           <input
             type="number"
             min={1}
             {...register('quantity', { valueAsNumber: true })}
-            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
+            className="border-border focus:ring-ring w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
           />
           {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message}</p>}
         </div>
@@ -102,14 +94,14 @@ export function OrderForm({
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 cursor-pointer rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex-1 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
           >
             {isLoading ? 'Đang xử lý...' : submitLabel}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            className="text-muted-foreground hover:bg-muted cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"
           >
             Hủy
           </button>

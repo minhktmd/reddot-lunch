@@ -15,7 +15,7 @@ export function ReportDetailRow({ employeeId, month }: ReportDetailRowProps) {
   if (isLoading) {
     return (
       <tr>
-        <td colSpan={7} className="bg-muted/50 px-6 py-4 text-center text-sm text-muted-foreground">
+        <td colSpan={7} className="bg-muted/50 text-muted-foreground px-6 py-4 text-center text-sm">
           Đang tải...
         </td>
       </tr>
@@ -25,7 +25,7 @@ export function ReportDetailRow({ employeeId, month }: ReportDetailRowProps) {
   if (!data || data.orders.length === 0) {
     return (
       <tr>
-        <td colSpan={7} className="bg-muted/50 px-6 py-4 text-center text-sm text-muted-foreground">
+        <td colSpan={7} className="bg-muted/50 text-muted-foreground px-6 py-4 text-center text-sm">
           Không có dữ liệu
         </td>
       </tr>
@@ -43,9 +43,7 @@ export function ReportDetailRow({ employeeId, month }: ReportDetailRowProps) {
           <td className="px-6 py-2 text-right">{formatPrice(order.unitPrice)}</td>
           <td className="px-6 py-2 text-right">{formatPrice(order.subtotal)}</td>
           <td className="px-6 py-2 text-center">
-            <span
-              className={order.isPaid ? 'text-green-600' : 'text-red-600'}
-            >
+            <span className={order.isPaid ? 'text-green-600' : 'text-red-600'}>
               {order.isPaid ? 'Đã trả' : 'Chưa trả'}
             </span>
           </td>

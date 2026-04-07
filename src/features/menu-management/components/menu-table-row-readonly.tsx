@@ -8,10 +8,10 @@ type Props = {
 
 export function MenuTableRowReadonly({ item }: Props) {
   return (
-    <tr className="border-b border-border last:border-0">
-      <td className="px-4 py-3 font-medium text-foreground">{item.name}</td>
-      <td className="px-4 py-3 text-foreground">{item.price.toLocaleString('vi-VN')}đ</td>
-      <td className="px-4 py-3 text-muted-foreground">{item.sideDishes ?? '—'}</td>
+    <tr className="border-border border-b last:border-0">
+      <td className="text-foreground px-4 py-3 font-medium">{item.name}</td>
+      <td className="text-foreground px-4 py-3">{item.price.toLocaleString('vi-VN')}đ</td>
+      <td className="text-muted-foreground px-4 py-3">{item.sideDishes ?? '—'}</td>
     </tr>
   );
 }

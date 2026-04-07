@@ -62,7 +62,7 @@ export function SettingsQRUpload({ hasExistingQR }: SettingsQRUploadProps) {
       {previewUrl ? (
         <div className="space-y-3">
           <p className="text-muted-foreground text-sm font-medium">Xem trước:</p>
-          <img src={previewUrl} alt="Xem trước QR" className="h-[200px] w-[200px] rounded-md border object-contain" />
+          <img src={previewUrl} alt="Xem trước QR" className="h-50 w-50 rounded-md border object-contain" />
           <div className="flex gap-2">
             <Button onClick={handleConfirm} disabled={isPending}>
               {isPending ? 'Đang tải...' : 'Xác nhận tải lên'}

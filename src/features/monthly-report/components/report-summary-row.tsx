@@ -14,7 +14,7 @@ type ReportSummaryRowProps = {
 
 export function ReportSummaryRow({ row, isExpanded, onToggle }: ReportSummaryRowProps) {
   return (
-    <tr className="cursor-pointer border-b hover:bg-muted/50" onClick={onToggle}>
+    <tr className="hover:bg-muted/50 cursor-pointer border-b" onClick={onToggle}>
       <td className="px-6 py-3">
         <div className="flex items-center gap-2">
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

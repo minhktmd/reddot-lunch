@@ -25,7 +25,7 @@ export function MenuTableRow({ item, onUpdate, onRemove, isEmptyRow = false }: P
   };
 
   return (
-    <tr className="border-b border-border last:border-0">
+    <tr className="border-border border-b last:border-0">
       <td className="px-2 py-1">
         <MenuNameCell
           value={item.name}
@@ -49,7 +49,7 @@ export function MenuTableRow({ item, onUpdate, onRemove, isEmptyRow = false }: P
           className="h-8 w-full border-0 bg-transparent px-2 shadow-none focus-visible:ring-1"
         />
       </td>
-      <td className="px-2 py-1 w-20">
+      <td className="w-20 px-2 py-1">
         {!isEmptyRow && (
           <>
             {confirmingDelete ? (

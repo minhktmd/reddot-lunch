@@ -1,10 +1,10 @@
-import { MenuManagementPage } from '@/features/menu-management'
+import { MenuManagementPage } from '@/features/menu-management';
 
 export default function MenuPage() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-foreground">Quản lý thực đơn</h1>
+      <h1 className="text-foreground mb-6 text-2xl font-semibold">Quản lý thực đơn</h1>
       <MenuManagementPage />
     </main>
-  )
+  );
 }

@@ -23,7 +23,7 @@ export function OrderTab({ employeeId }: OrderTabProps) {
   const cancelOrder = useCancelOrder(employeeId);
 
   if (menuLoading || ordersLoading) {
-    return <div className="py-12 text-center text-sm text-muted-foreground">Đang tải thực đơn...</div>;
+    return <div className="text-muted-foreground py-12 text-center text-sm">Đang tải thực đơn...</div>;
   }
 
   const isPublished = menuData?.status === 'exists' && menuData.menu.isPublished;
@@ -35,7 +35,7 @@ export function OrderTab({ employeeId }: OrderTabProps) {
     return (
       <div className="py-12 text-center">
         <p className="text-muted-foreground">Hôm nay chưa có thực đơn.</p>
-        <p className="mt-1 text-muted-foreground">Quay lại sau nhé! 🍱</p>
+        <p className="text-muted-foreground mt-1">Quay lại sau nhé! 🍱</p>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function OrderTab({ employeeId }: OrderTabProps) {
       {hasStandardItems && (
         <>
           <div>
-            <h3 className="mb-2 text-sm font-medium text-foreground">Thực đơn hôm nay</h3>
+            <h3 className="text-foreground mb-2 text-sm font-medium">Thực đơn hôm nay</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               {menuItems.map((item) => (
                 <OrderMenuCard

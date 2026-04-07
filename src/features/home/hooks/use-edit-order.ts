@@ -23,8 +23,7 @@ export function useEditOrder(employeeId: string) {
   const queryKey = queryKeys.orders.byEmployee(employeeId, date);
 
   return useMutation({
-    mutationFn: ({ id, menuOfDayItemId, quantity }: EditOrderVariables) =>
-      editOrder(id, { menuOfDayItemId, quantity }),
+    mutationFn: ({ id, menuOfDayItemId, quantity }: EditOrderVariables) => editOrder(id, { menuOfDayItemId, quantity }),
     onMutate: async (variables: EditOrderVariables) => {
       await queryClient.cancelQueries({ queryKey });
       const prev = queryClient.getQueryData<OrderItem[]>(queryKey);
@@ -32,20 +31,22 @@ export function useEditOrder(employeeId: string) {
       const menuData = queryClient.getQueryData<TodayMenuResponse | null>(queryKeys.menu.today);
       const menuItems = menuData?.status === 'exists' ? menuData.menu.items : [];
 
-      queryClient.setQueryData<OrderItem[]>(queryKey, (old) =>
-        old?.map((order) => {
-          if (order.id !== variables.id) return order;
+      queryClient.setQueryData<OrderItem[]>(
+        queryKey,
+        (old) =>
+          old?.map((order) => {
+            if (order.id !== variables.id) return order;
 
-          const newItem = variables.menuOfDayItemId
-            ? (menuItems.find((i) => i.id === variables.menuOfDayItemId) ?? order.menuOfDayItem)
-            : order.menuOfDayItem;
+            const newItem = variables.menuOfDayItemId
+              ? (menuItems.find((i) => i.id === variables.menuOfDayItemId) ?? order.menuOfDayItem)
+              : order.menuOfDayItem;
 
-          return {
-            ...order,
-            quantity: variables.quantity ?? order.quantity,
-            menuOfDayItem: newItem,
-          };
-        }) ?? []
+            return {
+              ...order,
+              quantity: variables.quantity ?? order.quantity,
+              menuOfDayItem: newItem,
+            };
+          }) ?? []
       );
 
       return { prev };

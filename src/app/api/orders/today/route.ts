@@ -36,7 +36,7 @@ export async function GET() {
           name: order.menuOfDayItem.name,
           price: order.menuOfDayItem.price,
         },
-      })),
+      }))
     );
   } catch (error) {
     logger.error('[GET /api/orders/today]', error);

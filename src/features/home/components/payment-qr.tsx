@@ -13,14 +13,8 @@ export function PaymentQr({ qrCodeUrl, onConfirmPayment, isLoading }: PaymentQrP
     <div className="space-y-4">
       {qrCodeUrl && (
         <div className="flex justify-center">
-          <div className="overflow-hidden rounded-lg border bg-card p-3 shadow-sm">
-            <Image
-              src={qrCodeUrl}
-              alt="Mã QR chuyển khoản"
-              width={200}
-              height={200}
-              className="object-contain"
-            />
+          <div className="bg-card overflow-hidden rounded-lg border p-3 shadow-sm">
+            <Image src={qrCodeUrl} alt="Mã QR chuyển khoản" width={200} height={200} className="object-contain" />
           </div>
         </div>
       )}

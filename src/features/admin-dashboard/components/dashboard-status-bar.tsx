@@ -43,8 +43,8 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-      <span className="font-medium text-foreground">{dateLabel}</span>
+    <div className="border-border bg-card flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
+      <span className="text-foreground font-medium">{dateLabel}</span>
       <span className="text-muted-foreground">•</span>
       <span
         className={`rounded-full px-2.5 py-0.5 text-sm font-medium ${
@@ -66,9 +66,7 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Mở lại thực đơn?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Nhân viên sẽ có thể chỉnh sửa đơn hàng sau khi mở lại.
-              </AlertDialogDescription>
+              <AlertDialogDescription>Nhân viên sẽ có thể chỉnh sửa đơn hàng sau khi mở lại.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Hủy</AlertDialogCancel>
@@ -90,9 +88,7 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Xác nhận chốt sổ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Nhân viên sẽ không thể thay đổi đơn hàng sau khi chốt.
-              </AlertDialogDescription>
+              <AlertDialogDescription>Nhân viên sẽ không thể thay đổi đơn hàng sau khi chốt.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Hủy</AlertDialogCancel>

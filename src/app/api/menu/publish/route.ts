@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { env } from '@/config/env';
-import { getTodayUTC } from '@/domains/menu';
+import { type ExternalDishItem, getTodayUTC } from '@/domains/menu';
 import { buildAutoOrderMessage, buildMenuPublishedMessage } from '@/features/slack-notifications';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (items.length === 0 && externalDishes.length === 0) {
       return NextResponse.json(
         { message: 'Thêm ít nhất một món ăn hoặc một món ăn ngoài trước khi đăng' },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       const channelMessage = buildMenuPublishedMessage(
         today,
         items.map((item) => ({ name: item.name, price: item.price, sideDishes: item.sideDishes ?? null })),
-        appUrl,
+        appUrl
       );
       await postChannel(channelMessage);
 
@@ -119,11 +119,8 @@ export async function POST(request: NextRequest) {
         autoOrderedEmployees
           .filter((o) => o.employee.slackId)
           .map((o) =>
-            postDM(
-              o.employee.slackId!,
-              buildAutoOrderMessage(o.menuOfDayItem.name, o.menuOfDayItem.price, appUrl),
-            ),
-          ),
+            postDM(o.employee.slackId!, buildAutoOrderMessage(o.menuOfDayItem.name, o.menuOfDayItem.price, appUrl))
+          )
       );
     }
 
@@ -138,7 +135,7 @@ export async function POST(request: NextRequest) {
         price: item.price,
         sideDishes: item.sideDishes,
       })),
-      externalDishes: (menu.externalDishes as import('@/domains/menu').ExternalDishItem[]) ?? [],
+      externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? [],
     });
   } catch (error) {
     logger.error('[POST /api/menu/publish]', error);

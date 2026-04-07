@@ -17,11 +17,7 @@ export function MenuExternalSection(props: MenuExternalSectionProps) {
     return <PrefillExternalSection />;
   }
   return (
-    <PublishedExternalSection
-      menuId={props.menuId}
-      externalDishes={props.externalDishes}
-      isLocked={props.isLocked}
-    />
+    <PublishedExternalSection menuId={props.menuId} externalDishes={props.externalDishes} isLocked={props.isLocked} />
   );
 }
 
@@ -35,7 +31,7 @@ function PrefillExternalSection() {
 
   return (
     <div className="mt-6">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">Món ăn ngoài</h3>
+      <h3 className="text-foreground mb-3 text-sm font-semibold">Món ăn ngoài</h3>
 
       {items.length > 0 && (
         <div className="mb-3 space-y-2">
@@ -51,12 +47,9 @@ function PrefillExternalSection() {
         </div>
       )}
 
-      {items.length === 0 && <p className="mb-3 text-sm text-muted-foreground">Chưa có món ăn ngoài nào.</p>}
+      {items.length === 0 && <p className="text-muted-foreground mb-3 text-sm">Chưa có món ăn ngoài nào.</p>}
 
-      <MenuExternalAddForm
-        onAdd={(name, orderUrl) => addExternalDish({ name, orderUrl })}
-        isLoading={false}
-      />
+      <MenuExternalAddForm onAdd={(name, orderUrl) => addExternalDish({ name, orderUrl })} isLoading={false} />
     </div>
   );
 }
@@ -85,7 +78,7 @@ function PublishedExternalSection({
 
   return (
     <div className="mt-6">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">Món ăn ngoài</h3>
+      <h3 className="text-foreground mb-3 text-sm font-semibold">Món ăn ngoài</h3>
 
       {externalDishes.length > 0 && (
         <div className="mb-3 space-y-2">
@@ -101,9 +94,7 @@ function PublishedExternalSection({
         </div>
       )}
 
-      {externalDishes.length === 0 && (
-        <p className="mb-3 text-sm text-muted-foreground">Chưa có món ăn ngoài nào.</p>
-      )}
+      {externalDishes.length === 0 && <p className="text-muted-foreground mb-3 text-sm">Chưa có món ăn ngoài nào.</p>}
 
       {!isLocked && <MenuExternalAddForm onAdd={handleAdd} isLoading={isPending} />}
     </div>

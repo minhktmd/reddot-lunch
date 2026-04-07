@@ -36,12 +36,7 @@ export function MenuExternalAddForm({ onAdd, isLoading }: MenuExternalAddFormPro
 
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-      <Input
-        placeholder="Tên món"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="sm:w-48"
-      />
+      <Input placeholder="Tên món" value={name} onChange={(e) => setName(e.target.value)} className="sm:w-48" />
       <div className="flex-1">
         <Input
           placeholder="Link đặt"
@@ -53,11 +48,7 @@ export function MenuExternalAddForm({ onAdd, isLoading }: MenuExternalAddFormPro
         />
         {urlError && <p className="mt-1 text-xs text-red-500">{urlError}</p>}
       </div>
-      <Button
-        size="sm"
-        onClick={handleSubmit}
-        disabled={isLoading || !name.trim() || !orderUrl.trim()}
-      >
+      <Button size="sm" onClick={handleSubmit} disabled={isLoading || !name.trim() || !orderUrl.trim()}>
         Thêm
       </Button>
     </div>

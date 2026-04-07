@@ -155,7 +155,7 @@ const saveExternalDishesResponseSchema = z.object({
 
 export async function saveExternalDishes(
   menuId: string,
-  externalDishes: ExternalDishItem[],
+  externalDishes: ExternalDishItem[]
 ): Promise<ExternalDishItem[]> {
   const response = await apiClient.patch<unknown>(`/api/menu/${menuId}/external-dishes`, { externalDishes });
   const result = saveExternalDishesResponseSchema.safeParse(response.data);

@@ -23,10 +23,7 @@ export function EmployeeDeleteDialog({ open, onOpenChange, employee }: EmployeeD
   const { mutate: deleteEmployee, isPending } = useDeleteEmployee();
 
   const handleConfirm = () => {
-    deleteEmployee(
-      { id: employee.id, name: employee.name },
-      { onSuccess: () => onOpenChange(false) }
-    );
+    deleteEmployee({ id: employee.id, name: employee.name }, { onSuccess: () => onOpenChange(false) });
   };
 
   return (

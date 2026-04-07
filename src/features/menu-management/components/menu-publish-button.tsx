@@ -39,7 +39,7 @@ export function MenuPublishButton() {
           orderUrl: d.orderUrl,
         })),
       },
-      { onSettled: () => setConfirming(false) },
+      { onSettled: () => setConfirming(false) }
     );
   };
 

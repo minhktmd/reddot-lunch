@@ -33,7 +33,7 @@ export function MonthlyReportPage() {
       </div>
 
       {isLoading ? (
-        <p className="py-8 text-center text-muted-foreground">Đang tải...</p>
+        <p className="text-muted-foreground py-8 text-center">Đang tải...</p>
       ) : (
         <ReportSummaryTable rows={rows} month={month} />
       )}

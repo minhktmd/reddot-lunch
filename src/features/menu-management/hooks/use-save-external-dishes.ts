@@ -17,8 +17,7 @@ export function useSaveExternalDishes() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ menuId, externalDishes }: SaveExternalDishesInput) =>
-      saveExternalDishes(menuId, externalDishes),
+    mutationFn: ({ menuId, externalDishes }: SaveExternalDishesInput) => saveExternalDishes(menuId, externalDishes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.menu.today });
     },

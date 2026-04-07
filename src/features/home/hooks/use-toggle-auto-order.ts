@@ -16,8 +16,9 @@ export function useToggleAutoOrder(employeeId: string) {
     onMutate: async (autoOrder: boolean) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.employees.all });
       const prev = queryClient.getQueryData<EmployeeListItem[]>(queryKeys.employees.all);
-      queryClient.setQueryData<EmployeeListItem[]>(queryKeys.employees.all, (old) =>
-        old?.map((e) => (e.id === employeeId ? { ...e, autoOrder } : e)) ?? []
+      queryClient.setQueryData<EmployeeListItem[]>(
+        queryKeys.employees.all,
+        (old) => old?.map((e) => (e.id === employeeId ? { ...e, autoOrder } : e)) ?? []
       );
       return { prev };
     },

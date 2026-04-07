@@ -6,13 +6,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { EMPLOYEE_ROLE, type EmployeeListItem } from '@/domains/employee';
 import { Button } from '@/shared/components/atoms/button';
 import { Input } from '@/shared/components/atoms/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/atoms/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/atoms/select';
 
 import { useEditEmployee } from '../hooks/use-edit-employee';
 import { editEmployeeSchema, type EditEmployeeInput } from '../types/employee-management.type';
@@ -60,7 +54,7 @@ export function EmployeeRowEdit({ employee, onCancel }: EmployeeRowEditProps) {
 
           <div className="flex flex-col gap-1">
             <Input placeholder="Slack ID" {...register('slackId')} className="w-32" />
-            <p className="text-xs text-muted-foreground">Slack member ID, ví dụ: U012AB3CD</p>
+            <p className="text-muted-foreground text-xs">Slack member ID, ví dụ: U012AB3CD</p>
           </div>
 
           <Controller

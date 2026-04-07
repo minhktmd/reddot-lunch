@@ -44,7 +44,7 @@ export function MenuExternalRow({ item, isLocked, onDelete, isLoading }: MenuExt
         target="_blank"
         rel="noopener noreferrer"
         title={item.orderUrl}
-        className="min-w-0 max-w-48 truncate text-xs text-blue-600 underline hover:text-blue-800"
+        className="max-w-48 min-w-0 truncate text-xs text-blue-600 underline hover:text-blue-800"
       >
         {item.orderUrl}
       </a>
