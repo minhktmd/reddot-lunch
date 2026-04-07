@@ -70,7 +70,7 @@ export function MenuLockButton({ menuId }: Props) {
 
   return (
     <Button
-      variant={state === 'confirming' ? 'destructive' : 'default'}
+      variant="default"
       onClick={handleClick}
       disabled={isPending}
       onBlur={() => setState('idle')}

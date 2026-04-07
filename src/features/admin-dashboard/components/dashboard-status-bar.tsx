@@ -80,7 +80,7 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
         <AlertDialog open={lockOpen} onOpenChange={setLockOpen}>
           <AlertDialogTrigger
             render={
-              <Button variant="destructive" size="sm" disabled={isLocking}>
+              <Button variant="default" size="sm" disabled={isLocking}>
                 {isLocking ? 'Đang chốt...' : 'Chốt sổ'}
               </Button>
             }
@@ -92,7 +92,7 @@ export function DashboardStatusBar({ menu, onLock, onUnlock, isLocking, isUnlock
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Hủy</AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={handleLockConfirm} disabled={isLocking}>
+              <AlertDialogAction onClick={handleLockConfirm} disabled={isLocking}>
                 {isLocking ? 'Đang chốt...' : 'Xác nhận'}
               </AlertDialogAction>
             </AlertDialogFooter>

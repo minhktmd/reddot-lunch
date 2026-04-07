@@ -45,7 +45,7 @@ export function MenuPublishButton() {
 
   return (
     <Button
-      variant={confirming ? 'destructive' : 'default'}
+      variant="default"
       onClick={handleClick}
       disabled={isPending}
       onBlur={() => setConfirming(false)}

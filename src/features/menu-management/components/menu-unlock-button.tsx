@@ -22,7 +22,7 @@ export function MenuUnlockButton({ menuId }: Props) {
 
   return (
     <Button
-      variant={confirming ? 'destructive' : 'outline'}
+      variant={confirming ? 'secondary' : 'outline'}
       onClick={handleClick}
       disabled={isPending}
       onBlur={() => setConfirming(false)}
