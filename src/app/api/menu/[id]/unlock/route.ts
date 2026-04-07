@@ -1,4 +1,4 @@
-import { updateTag } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/shared/lib/logger';
@@ -26,7 +26,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       include: { items: true },
     });
 
-    updateTag('menu-today');
+    revalidateTag('menu-today', 'default');
 
     return NextResponse.json({
       id: updated.id,

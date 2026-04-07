@@ -1,4 +1,4 @@
-import { updateTag } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -25,7 +25,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return { deleted: true, ordersDeleted: ordersDeleted.count };
     });
 
-    updateTag('employees');
+    revalidateTag('employees', 'default');
 
     return NextResponse.json(result);
   } catch (error) {
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: result.data,
     });
 
-    updateTag('employees');
+    revalidateTag('employees', 'default');
 
     return NextResponse.json(employee);
   } catch (error) {

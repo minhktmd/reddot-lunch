@@ -1,4 +1,4 @@
-import { updateTag } from 'next/cache';
+import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { uploadQRCode } from '@/shared/lib/blob';
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       create: { id: 'singleton', qrCodeUrl: publicUrl },
     });
 
-    updateTag('config');
+    revalidateTag('config', 'default');
 
     return NextResponse.json({
       id: config.id,

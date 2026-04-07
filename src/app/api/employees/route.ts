@@ -1,4 +1,4 @@
-import { unstable_cache, updateTag } from 'next/cache';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    updateTag('employees');
+    revalidateTag('employees', 'default');
 
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {
