@@ -48,7 +48,7 @@ export function MenuExternalAddForm({ onAdd, isLoading }: MenuExternalAddFormPro
         />
         {urlError && <p className="mt-1 text-xs text-red-500">{urlError}</p>}
       </div>
-      <Button size="sm" onClick={handleSubmit} disabled={isLoading || !name.trim() || !orderUrl.trim()}>
+      <Button className="h-10" onClick={handleSubmit} disabled={isLoading || !name.trim() || !orderUrl.trim()}>
         Thêm
       </Button>
     </div>
