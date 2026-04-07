@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       });
     });
 
-    revalidateTag('menu-today', 'default');
+    revalidateTag('menu-today', { expire: 0 });
 
     return NextResponse.json({
       id: updated!.id,

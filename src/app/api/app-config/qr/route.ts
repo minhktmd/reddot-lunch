@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       create: { id: 'singleton', qrCodeUrl: publicUrl },
     });
 
-    revalidateTag('config', 'default');
+    revalidateTag('config', { expire: 0 });
 
     return NextResponse.json({
       id: config.id,

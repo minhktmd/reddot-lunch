@@ -40,7 +40,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       data: { externalDishes: parsed.data.externalDishes },
     });
 
-    revalidateTag('menu-today', 'default');
+    revalidateTag('menu-today', { expire: 0 });
 
     return NextResponse.json({
       externalDishes: (updated.externalDishes as ExternalDishItem[]) ?? [],

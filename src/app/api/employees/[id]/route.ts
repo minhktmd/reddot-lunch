@@ -25,7 +25,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return { deleted: true, ordersDeleted: ordersDeleted.count };
     });
 
-    revalidateTag('employees', 'default');
+    revalidateTag('employees', { expire: 0 });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       data: result.data,
     });
 
-    revalidateTag('employees', 'default');
+    revalidateTag('employees', { expire: 0 });
 
     return NextResponse.json(employee);
   } catch (error) {

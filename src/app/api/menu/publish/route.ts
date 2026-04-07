@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
       return menuOfDay;
     });
 
-    revalidateTag('menu-today', 'default');
-    revalidateTag('menu-suggestions', 'default');
+    revalidateTag('menu-today', { expire: 0 });
+    revalidateTag('menu-suggestions', { expire: 0 });
 
     // Slack notifications (outside transaction — failures should not roll back the publish)
     if (items.length > 0) {

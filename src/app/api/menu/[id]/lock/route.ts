@@ -30,7 +30,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       include: { items: true },
     });
 
-    revalidateTag('menu-today', 'default');
+    revalidateTag('menu-today', { expire: 0 });
 
     return NextResponse.json({
       id: updated.id,

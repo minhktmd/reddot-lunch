@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    revalidateTag('employees', 'default');
+    revalidateTag('employees', { expire: 0 });
 
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {
