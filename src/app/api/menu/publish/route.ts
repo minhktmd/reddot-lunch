@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -94,6 +95,9 @@ export async function POST(request: NextRequest) {
 
       return menuOfDay;
     });
+
+    updateTag('menu-today');
+    updateTag('menu-suggestions');
 
     // Slack notifications (outside transaction — failures should not roll back the publish)
     if (items.length > 0) {

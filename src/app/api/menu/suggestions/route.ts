@@ -1,10 +1,11 @@
+import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 
-export async function GET() {
-  try {
+const getCachedSuggestions = unstable_cache(
+  async () => {
     const items = await prisma.menuOfDayItem.findMany({
       select: { name: true, price: true, menuOfDay: { select: { date: true } } },
       orderBy: { menuOfDay: { date: 'desc' } },
@@ -18,10 +19,17 @@ export async function GET() {
       }
     }
 
-    const suggestions = Array.from(seen.entries())
+    return Array.from(seen.entries())
       .map(([name, price]) => ({ name, price }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  },
+  ['menu-suggestions'],
+  { revalidate: 300, tags: ['menu-suggestions'] }
+);
 
+export async function GET() {
+  try {
+    const suggestions = await getCachedSuggestions();
     return NextResponse.json({ suggestions });
   } catch (error) {
     logger.error('[GET /api/menu/suggestions]', error);

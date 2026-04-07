@@ -1,3 +1,4 @@
+import { unstable_cache, updateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -12,16 +13,23 @@ const createEmployeeSchema = z.object({
   role: z.enum([EMPLOYEE_ROLE.ADMIN, EMPLOYEE_ROLE.MEMBER]).optional(),
 });
 
+const getCachedEmployees = unstable_cache(
+  async (includeInactive: boolean) => {
+    return await prisma.employee.findMany({
+      where: includeInactive ? undefined : { isActive: true },
+      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
+    });
+  },
+  ['employees'],
+  { revalidate: 300, tags: ['employees'] }
+);
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    const employees = await prisma.employee.findMany({
-      where: includeInactive ? undefined : { isActive: true },
-      orderBy: [{ isActive: 'desc' }, { name: 'asc' }],
-    });
-
+    const employees = await getCachedEmployees(includeInactive);
     return NextResponse.json(employees);
   } catch (error) {
     logger.error('[GET /api/employees]', error);
@@ -48,6 +56,8 @@ export async function POST(request: NextRequest) {
         role: role ?? EMPLOYEE_ROLE.MEMBER,
       },
     });
+
+    updateTag('employees');
 
     return NextResponse.json(employee, { status: 201 });
   } catch (error) {

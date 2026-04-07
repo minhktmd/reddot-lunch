@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { getTodayUTC } from '@/domains/menu';
@@ -6,9 +7,9 @@ import { prisma } from '@/shared/lib/prisma';
 
 import type { ExternalDishItem } from '@/domains/menu';
 
-export async function GET() {
-  try {
-    const today = getTodayUTC();
+const getCachedTodayMenu = unstable_cache(
+  async (todayISO: string) => {
+    const today = new Date(todayISO);
 
     const menu = await prisma.menuOfDay.findUnique({
       where: { date: today },
@@ -16,8 +17,8 @@ export async function GET() {
     });
 
     if (menu) {
-      return NextResponse.json({
-        status: 'exists',
+      return {
+        status: 'exists' as const,
         menu: {
           id: menu.id,
           date: menu.date.toISOString(),
@@ -31,7 +32,7 @@ export async function GET() {
           })),
           externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? [],
         },
-      });
+      };
     }
 
     // No menu today — prefill from most recent day that has items
@@ -48,7 +49,17 @@ export async function GET() {
         sideDishes: item.sideDishes,
       })) ?? [];
 
-    return NextResponse.json({ status: 'prefill', items: prefillItems });
+    return { status: 'prefill' as const, items: prefillItems };
+  },
+  ['menu-today'],
+  { revalidate: 60, tags: ['menu-today'] }
+);
+
+export async function GET() {
+  try {
+    const today = getTodayUTC();
+    const data = await getCachedTodayMenu(today.toISOString());
+    return NextResponse.json(data);
   } catch (error) {
     logger.error('[GET /api/menu/today]', error);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });

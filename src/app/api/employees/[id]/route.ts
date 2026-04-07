@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -24,6 +25,8 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return { deleted: true, ordersDeleted: ordersDeleted.count };
     });
 
+    updateTag('employees');
+
     return NextResponse.json(result);
   } catch (error) {
     logger.error('[DELETE /api/employees/[id]]', error);
@@ -45,6 +48,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: { id },
       data: result.data,
     });
+
+    updateTag('employees');
 
     return NextResponse.json(employee);
   } catch (error) {

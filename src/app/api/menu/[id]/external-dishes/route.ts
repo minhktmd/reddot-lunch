@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -38,6 +39,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       where: { id },
       data: { externalDishes: parsed.data.externalDishes },
     });
+
+    updateTag('menu-today');
 
     return NextResponse.json({
       externalDishes: (updated.externalDishes as ExternalDishItem[]) ?? [],

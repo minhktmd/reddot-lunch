@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -86,6 +87,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         include: { items: true },
       });
     });
+
+    updateTag('menu-today');
 
     return NextResponse.json({
       id: updated!.id,

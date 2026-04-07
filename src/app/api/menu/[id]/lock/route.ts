@@ -1,3 +1,4 @@
+import { updateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { logger } from '@/shared/lib/logger';
@@ -28,6 +29,8 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       data: { isLocked: true },
       include: { items: true },
     });
+
+    updateTag('menu-today');
 
     return NextResponse.json({
       id: updated.id,
