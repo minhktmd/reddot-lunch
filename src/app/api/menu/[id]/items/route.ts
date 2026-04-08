@@ -2,8 +2,11 @@ import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { env } from '@/config/env';
+import { buildMenuUpdatedMessage, didItemsChange } from '@/features/slack-notifications';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
+import { postChannel } from '@/shared/lib/slack';
 
 import type { ExternalDishItem } from '@/domains/menu';
 
@@ -55,6 +58,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       where: { menuOfDayId: id },
     });
 
+    const itemsBefore = existingItems.map((item) => ({
+      name: item.name,
+      price: item.price,
+      sideDishes: item.sideDishes,
+    }));
+
     const itemsToRemove = existingItems.filter((item) => !submittedNames.has(item.name));
 
     // All in a single transaction: cascade-delete orders, delete removed items, upsert submitted items
@@ -89,6 +98,18 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
 
     revalidateTag('menu-today', { expire: 0 });
+
+    const itemsAfter = updated!.items.map((item) => ({
+      name: item.name,
+      price: item.price,
+      sideDishes: item.sideDishes,
+    }));
+
+    if (didItemsChange(itemsBefore, itemsAfter)) {
+      postChannel(buildMenuUpdatedMessage(menu.date, itemsAfter, env.NEXT_PUBLIC_APP_URL)).catch((err) =>
+        logger.error('Slack menu-updated notification failed', err)
+      );
+    }
 
     return NextResponse.json({
       id: updated!.id,

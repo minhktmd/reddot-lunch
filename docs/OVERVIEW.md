@@ -102,6 +102,9 @@ Full transition logic → `docs/domains/menu.md`
 |---|---|---|
 | Menu published | Channel post | On publish |
 | Auto order created | Employee DM | On publish |
+| Menu items updated | Channel post | On "Lưu thay đổi" — only when items actually changed |
+| External dishes updated | Channel post | On external dish add/remove — only when resulting list non-empty |
+| Menu locked | Channel post | On "Chốt sổ" |
 | Payment reminder | Channel post | Cron 13:00 daily |
 
 Details + message templates → `docs/domains/order.md`, `src/features/slack-notifications/SPEC.md`

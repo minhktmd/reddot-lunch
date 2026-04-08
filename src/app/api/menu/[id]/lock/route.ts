@@ -2,8 +2,10 @@ import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { type ExternalDishItem } from '@/domains/menu';
+import { buildMenuLockedMessage } from '@/features/slack-notifications';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
+import { postChannel } from '@/shared/lib/slack';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -32,6 +34,10 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     });
 
     revalidateTag('menu-today', { expire: 0 });
+
+    postChannel(buildMenuLockedMessage()).catch((err) =>
+      logger.error('Slack menu-locked notification failed', err)
+    );
 
     return NextResponse.json({
       id: updated.id,

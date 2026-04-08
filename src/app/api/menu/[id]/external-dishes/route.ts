@@ -2,8 +2,10 @@ import { revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { buildExternalDishesUpdatedMessage } from '@/features/slack-notifications';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
+import { postChannel } from '@/shared/lib/slack';
 
 import type { ExternalDishItem } from '@/domains/menu';
 
@@ -42,8 +44,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     revalidateTag('menu-today', { expire: 0 });
 
+    const updatedExternalDishes = (updated.externalDishes as ExternalDishItem[]) ?? [];
+
+    if (updatedExternalDishes.length > 0) {
+      postChannel(buildExternalDishesUpdatedMessage(updatedExternalDishes)).catch((err) =>
+        logger.error('Slack external-dishes notification failed', err)
+      );
+    }
+
     return NextResponse.json({
-      externalDishes: (updated.externalDishes as ExternalDishItem[]) ?? [],
+      externalDishes: updatedExternalDishes,
     });
   } catch (error) {
     logger.error('[PATCH /api/menu/[id]/external-dishes]', error);

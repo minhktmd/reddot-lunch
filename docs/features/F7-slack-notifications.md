@@ -8,15 +8,18 @@
 
 ## Overview
 
-Two types of Slack messages:
+Five types of Slack messages, all channel posts except auto order DMs:
 
-| Type | Trigger | Target |
-|---|---|---|
-| Menu published | Admin clicks "Đăng thực đơn" | Channel |
-| Auto order created | Part of publish flow | Employee DM (per eligible employee) |
-| Payment reminder | Vercel Cron at 13:00 weekdays | Channel |
+| # | Type | Trigger | Target |
+|---|---|---|---|
+| 1 | Menu published | Admin clicks "Đăng thực đơn" | Channel |
+| 2 | Auto order created | Part of publish flow | Employee DM (per eligible employee) |
+| 3 | Menu items updated | Admin saves post-publish item changes (only when DB actually changed) | Channel |
+| 4 | External dishes updated | Admin adds/removes external dishes post-publish (only when list non-empty after change) | Channel |
+| 5 | Menu locked | Admin clicks "Chốt sổ" | Channel |
+| 6 | Payment reminder | Vercel Cron at 13:00 weekdays | Channel |
 
-All Slack logic lives in `shared/lib/slack.ts`. This feature wires up the helpers into the publish and cron flows.
+All Slack logic lives in `shared/lib/slack.ts`. This feature wires up the helpers into the publish, save-items, save-external-dishes, lock, and cron flows.
 
 ---
 
@@ -76,6 +79,67 @@ Only sent when:
 
 ---
 
+### 4. Menu Items Updated — Channel Post
+
+Sent to the Slack channel when admin saves post-publish item changes via "Lưu thay đổi" **and the items actually changed** (compared to what was in the DB before the save).
+
+```
+✏️ Admin vừa cập nhật thực đơn hôm nay ({weekday}, {dd/MM/yyyy}):
+
+• {dish name 1} — {price}đ{sideDishes ? " (" + sideDishes + ")" : ""}
+• {dish name 2} — {price}đ
+...
+
+👉 Xem và đặt cơm tại đây: {NEXT_PUBLIC_APP_URL}
+```
+
+Example:
+```
+✏️ Admin vừa cập nhật thực đơn hôm nay (Thứ Tư, 04/04/2026):
+
+• Cơm gà Hội An — 45.000đ (Nộm, canh bầu, chả cá)
+• Bún bò Huế — 40.000đ
+
+👉 Xem và đặt cơm tại đây: https://datcom.company.com
+```
+
+**"Actually changed" rule:** The API route compares the saved item set (by `name + price + sideDishes`) against what was in the DB before the PATCH. If the resulting set is identical, skip the Slack call. This prevents noise when admin accidentally triggers "Lưu thay đổi" without making real changes.
+
+---
+
+### 5. External Dishes Updated — Channel Post
+
+Sent to the Slack channel when admin adds or removes an external dish post-publish via `PATCH /api/menu/[id]/external-dishes`. Only sent when the resulting list is **non-empty** (removing the last external dish sends nothing).
+
+```
+🛵 Admin vừa cập nhật món ăn ngoài cho hôm nay:
+
+• {name 1} — {orderUrl 1}
+• {name 2} — {orderUrl 2}
+```
+
+Example:
+```
+🛵 Admin vừa cập nhật món ăn ngoài cho hôm nay:
+
+• Bún sườn chua — Trần Huy Liệu — https://grab.onelink.me/...
+• Cơm tấm Kiều Giang — https://shopeefood.vn/...
+
+```
+
+---
+
+### 6. Menu Locked — Channel Post
+
+Sent to the Slack channel when admin clicks "Chốt sổ" (`POST /api/menu/[id]/lock`).
+
+```
+🔒 Admin đã chốt danh sách đặt cơm hôm nay. Đơn đã được gửi đi rồi!
+Nếu bạn chưa đặt, vui lòng tự lo bữa trưa nhé! 🍜
+```
+
+---
+
 ## Shared Helpers (`shared/lib/slack.ts`)
 
 ```ts
@@ -129,6 +193,55 @@ await Promise.allSettled(
 ```
 
 `Promise.allSettled` — Slack failures must not block the publish response. If Slack is down, the menu is still published successfully.
+
+---
+
+## Menu Items Updated Flow Integration
+
+The save-items API route (`PATCH /api/menu/[id]/items`) calls the Slack helper **after** DB writes succeed, but **only when items actually changed**:
+
+```ts
+// After diffing and applying DB changes:
+const itemsChanged = didItemsChange(itemsBefore, itemsAfter)  // compare (name, price, sideDishes) sets
+
+if (itemsChanged) {
+  await postChannel(buildMenuUpdatedMessage(menuOfDay.date, itemsAfter, appUrl)).catch(
+    (err) => logger.error("Slack menu-updated notification failed", err)
+  )
+}
+```
+
+`didItemsChange` compares the two item lists by their `(name, price, sideDishes)` tuples — order-independent. If admin saves with zero real changes, Slack is not called.
+
+---
+
+## External Dishes Updated Flow Integration
+
+The external dishes API route (`PATCH /api/menu/[id]/external-dishes`) calls the Slack helper **after** DB write succeeds, but **only when the resulting list is non-empty**:
+
+```ts
+// After saving externalDishes to DB:
+if (updatedExternalDishes.length > 0) {
+  await postChannel(buildExternalDishesUpdatedMessage(updatedExternalDishes)).catch(
+    (err) => logger.error("Slack external-dishes notification failed", err)
+  )
+}
+```
+
+Removing the last external dish → list becomes empty → no Slack call.
+
+---
+
+## Menu Locked Flow Integration
+
+The lock API route (`POST /api/menu/[id]/lock`) calls the Slack helper after DB write succeeds:
+
+```ts
+// After setting isLocked = true:
+await postChannel(buildMenuLockedMessage()).catch(
+  (err) => logger.error("Slack menu-locked notification failed", err)
+)
+```
 
 ---
 
@@ -214,6 +327,50 @@ export function buildAutoOrderMessage(
 ): string {
   return `🍱 Hôm nay hệ thống tự đặt cho bạn: ${dishName} x1 — ${price.toLocaleString("vi-VN")}đ.\nMuốn đổi hoặc hủy, vào đây trước khi admin chốt sổ: ${appUrl}`
 }
+
+// build-menu-updated-message.ts
+export function buildMenuUpdatedMessage(
+  date: Date,
+  items: { name: string; price: number; sideDishes: string | null }[],
+  appUrl: string
+): string {
+  const weekday = formatInTimeZone(date, "Asia/Ho_Chi_Minh", "EEEE", { locale: vi })
+  const dateStr = formatInTimeZone(date, "Asia/Ho_Chi_Minh", "dd/MM/yyyy")
+  const itemLines = items
+    .map(i => {
+      const sides = i.sideDishes ? ` (${i.sideDishes})` : ""
+      return `• ${i.name} — ${i.price.toLocaleString("vi-VN")}đ${sides}`
+    })
+    .join("\n")
+  return `✏️ Admin vừa cập nhật thực đơn hôm nay (${weekday}, ${dateStr}):\n\n${itemLines}\n\n👉 Xem và đặt cơm tại đây: ${appUrl}`
+}
+
+// build-external-dishes-updated-message.ts
+export function buildExternalDishesUpdatedMessage(
+  dishes: { name: string; orderUrl: string }[]
+): string {
+  const lines = dishes.map(d => `• ${d.name} — ${d.orderUrl}`).join("\n")
+  return `🛵 Admin vừa cập nhật món ăn ngoài cho hôm nay:\n\n${lines}`
+}
+
+// build-menu-locked-message.ts
+export function buildMenuLockedMessage(): string {
+  return `🔒 Admin đã chốt danh sách đặt cơm hôm nay. Đơn đã được gửi đi rồi!\nNếu bạn chưa đặt, vui lòng tự lo bữa trưa nhé! 🍜`
+}
+
+// did-items-change.ts — helper used in PATCH /api/menu/[id]/items
+export function didItemsChange(
+  before: { name: string; price: number; sideDishes: string | null }[],
+  after: { name: string; price: number; sideDishes: string | null }[]
+): boolean {
+  const toKey = (i: { name: string; price: number; sideDishes: string | null }) =>
+    `${i.name}|${i.price}|${i.sideDishes ?? ""}`
+  const beforeKeys = new Set(before.map(toKey))
+  const afterKeys = new Set(after.map(toKey))
+  if (beforeKeys.size !== afterKeys.size) return true
+  for (const k of afterKeys) if (!beforeKeys.has(k)) return true
+  return false
+}
 ```
 
 ---
@@ -223,10 +380,15 @@ export function buildAutoOrderMessage(
 - [ ] US1: Channel receives today's menu when admin publishes
 - [ ] US2: Each eligible auto-order employee receives a DM with their dish and a link
 - [ ] US3: Employees without a `slackId` do not receive DMs
-- [ ] US4: Channel receives payment reminder at 13:00 on weekdays when unpaid orders exist
-- [ ] US5: No reminder is sent if today has no published menu
-- [ ] US6: No reminder is sent if all orders are paid
-- [ ] US7: Slack failures during publish do not cause the publish to fail
+- [ ] US4: Channel receives an updated menu notification when admin saves post-publish item changes
+- [ ] US5: No menu-updated notification is sent if the saved items are identical to what was already in the DB
+- [ ] US6: Channel receives an external dishes notification when admin adds/removes an external dish post-publish and the resulting list is non-empty
+- [ ] US7: No external dishes notification is sent when admin removes the last external dish (list becomes empty)
+- [ ] US8: Channel receives a locked notification when admin clicks "Chốt sổ"
+- [ ] US9: Channel receives payment reminder at 13:00 on weekdays when unpaid orders exist
+- [ ] US10: No reminder is sent if today has no published menu
+- [ ] US11: No reminder is sent if all orders are paid
+- [ ] US12: Slack failures in any of these flows do not cause the triggering operation to fail
 
 ---
 
