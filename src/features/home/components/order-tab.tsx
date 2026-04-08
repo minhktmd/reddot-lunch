@@ -43,6 +43,15 @@ export function OrderTab({ employeeId }: OrderTabProps) {
   const hasStandardItems = menuItems.length > 0;
   const hasExternalDishes = externalDishes.length > 0;
 
+  if (!hasStandardItems && !hasExternalDishes) {
+    return (
+      <div className="py-12 text-center">
+        <p className="text-muted-foreground">Hôm nay chưa có món ăn nào.</p>
+        <p className="text-muted-foreground mt-1">Quay lại sau nhé! 🍱</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {isLocked && (
