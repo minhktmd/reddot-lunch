@@ -1,6 +1,7 @@
 import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { type ExternalDishItem } from '@/domains/menu';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 
@@ -33,6 +34,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       date: updated.date.toISOString(),
       isPublished: updated.isPublished,
       isLocked: updated.isLocked,
+      externalDishes: (updated.externalDishes as ExternalDishItem[]) ?? [],
       items: updated.items.map((item) => ({
         id: item.id,
         name: item.name,

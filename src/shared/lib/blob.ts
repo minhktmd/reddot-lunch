@@ -7,6 +7,7 @@ export async function uploadQRCode(file: File): Promise<string> {
     access: 'public',
     token: env.BLOB_READ_WRITE_TOKEN,
     addRandomSuffix: false,
+    allowOverwrite: true,
   });
   return `${url}?t=${Date.now()}`;
 }
