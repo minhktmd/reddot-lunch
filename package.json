@@ -13,7 +13,9 @@
     "format:check": "prettier --check .",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:reset-today": "npx tsx scripts/reset-today.ts"
+    "db:reset-today": "npx tsx scripts/reset-today.ts",
+    "db:delete-employees": "npx tsx scripts/delete-all-employees.ts",
+    "db:delete-orders": "npx tsx scripts/delete-all-orders.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
