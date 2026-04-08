@@ -22,7 +22,7 @@ export function SettingsQRSection() {
   }
 
   const hasQR = Boolean(config?.qrCodeUrl);
-  const qrUrl = config?.qrCodeUrl ? `${config.qrCodeUrl}?t=${Date.now()}` : null;
+  const qrUrl = config?.qrCodeUrl ?? null;
 
   if (!hasQR) {
     return (
@@ -39,7 +39,8 @@ export function SettingsQRSection() {
       <h2 className="text-lg font-semibold">Mã QR thanh toán</h2>
       <div className="rounded-lg border p-4">
         {qrUrl && (
-          <img src={qrUrl} alt="Mã QR thanh toán" className="h-50 w-50 rounded-md border object-contain" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={qrUrl} src={qrUrl} alt="Mã QR thanh toán" className="h-50 w-50 rounded-md border object-contain" />
         )}
         {config?.updatedAt && (
           <p className="text-muted-foreground mt-3 text-sm">Cập nhật: {formatUpdatedAt(config.updatedAt)}</p>

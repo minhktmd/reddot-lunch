@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'File size exceeds 2MB limit' }, { status: 400 });
     }
 
-    const publicUrl = await uploadQRCode(file);
+    const existing = await prisma.appConfig.findUnique({ where: { id: 'singleton' } });
+    const publicUrl = await uploadQRCode(file, existing?.qrCodeUrl);
 
     const config = await prisma.appConfig.upsert({
       where: { id: 'singleton' },
