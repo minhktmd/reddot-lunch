@@ -1,3 +1,5 @@
+import { Analytics } from '@vercel/analytics/react';
+
 import { AppProviders } from './providers';
 
 import type { Metadata } from 'next';
@@ -17,6 +19,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <AppProviders>{children}</AppProviders>
+        <Analytics />
       </body>
     </html>
   );
