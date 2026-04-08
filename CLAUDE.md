@@ -60,7 +60,7 @@ Read in this order for full context:
    - `docs/domains/employee.md` — Employee entity, role constants, identity (no auth)
    - `docs/domains/menu.md` — MenuOfDay, MenuOfDayItem, lifecycle, timezone helpers, batch editing pattern
    - `docs/domains/order.md` — Order, auto order, payment flow, cron
-4. **`src/features/<feature>/SPEC.md`** — Feature-specific detail: screens, API contracts, business rules
+4. **`docs/features/F<N>-<feature>.md`** — Feature-specific detail: screens, API contracts, business rules
 
 ---
 
@@ -114,7 +114,7 @@ Each feature in `src/features/<feature>/` follows this layout:
 
 ```
 <feature>/
-├── SPEC.md                     ★ Read this before implementing
+├── (no SPEC.md here — feature specs live in docs/features/)
 ├── components/                 → Feature components (flat — no atomic subdivision)
 ├── hooks/
 ├── services/                   → All API/async functions for this feature
@@ -223,7 +223,7 @@ app/ → features/ → domains/ → shared/
 2. Read `docs/OVERVIEW.md` for domain model and feature map
 3. Read `docs/domains/<relevant>.md` for shared domain knowledge
 4. Check `src/domains/<relevant>/index.ts` — reuse before writing new code
-5. Read `src/features/<feature>/SPEC.md` — this is the source of truth for the feature
+5. Read `docs/features/F<N>-<feature>.md` — this is the source of truth for the feature
 6. Implement in order: **types → services → stores → hooks → components → index.ts**
 7. Wire up the route at `src/app/<route>/page.tsx` (thin wrapper, no business logic)
 8. Verify each User Story in SPEC.md — update `[ ]` → `[x]` when done
