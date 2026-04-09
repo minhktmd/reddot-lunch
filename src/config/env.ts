@@ -12,6 +12,9 @@ export const env = {
 
   // Cron
   CRON_SECRET: process.env.CRON_SECRET ?? '',
+
+  // Admin (not used in middleware — middleware reads process.env directly for Edge compat)
+  ADMIN_TOKEN: process.env.ADMIN_TOKEN ?? '',
 } as const;
 
 // Validate at startup (server-side only)

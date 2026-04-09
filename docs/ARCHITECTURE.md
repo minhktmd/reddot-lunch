@@ -123,22 +123,60 @@ Storing `2026-04-04T00:00:00+07:00` as `2026-04-03T17:00:00Z` in the DB allows s
 
 ---
 
-## Authentication — None
+## Admin Access — Token-Based Protection
 
-There is no authentication. All routes including `/admin/*` are publicly accessible.
-
-### Why no auth
+### Why not full authentication
 
 - Internal office tool — the URL is not publicly shared
 - Replacing a Google Sheet — no auth existed before
-- 30–50 known users in the same office — risk of unauthorized access is accepted
-- Adding auth would add significant complexity (session management, middleware, protected routes)
+- 30–50 known users in the same office
+- Full auth (session management, login flow, protected routes) would add significant complexity for marginal security gain at this scale
 
-### Identity instead of auth
+However, with the addition of the **Lunch Fund** (real money in the system), leaving `/admin/*` completely open is no longer acceptable. Any employee could accidentally or intentionally create ledger entries, adjust balances, or view financial data.
 
-Users identify themselves by selecting their name from a dropdown. The selected `employeeId` is saved to `localStorage`. This is not secure — anyone can impersonate anyone — but it is sufficient for the use case.
+### Solution: shared admin token via cookie
 
-`role = "admin"` exists only to route Slack notifications to the right people. It does not gate any routes or actions.
+A single `ADMIN_TOKEN` environment variable acts as the shared secret for all admin access. The token is distributed out-of-band (e.g. via Slack DM to admin employees).
+
+**Flow:**
+
+1. Admin visits `/admin?token=<ADMIN_TOKEN>` once (e.g. from a Slack message or bookmarked link)
+2. Next.js middleware validates `?token` against `ADMIN_TOKEN` env var
+3. On match: set `HttpOnly` cookie `admin_token=<value>`, redirect to `/admin` (clean URL)
+4. All subsequent requests to `/admin/*`: middleware reads cookie → valid → allow through
+5. Cookie miss or mismatch → redirect to `/admin/login` (simple page with a token input field)
+
+**Cookie settings:**
+- `HttpOnly: true` — not readable by JavaScript
+- `SameSite: Strict` — no cross-site leakage
+- `Max-Age: 30 days` — survives tab closes; admin re-enters token after 30 days
+- `Secure: true` in production (HTTPS only)
+- `Path: /admin` — cookie sent only to `/admin/*` routes
+
+**Token rotation:** change `ADMIN_TOKEN` env var → redeploy → all existing cookies become invalid → admin re-enters new token link.
+
+### What this protects
+
+- All `/admin/*` pages: dashboard, menu management, employee management, finance, settings
+
+### What this does NOT protect
+
+- Employee identity on `/` — still no auth; anyone can select any name (unchanged)
+- API routes — `/api/*` remains open; the token middleware applies only to `/admin/*` page routes
+- The `?token=` URL in browser history — admin should use private/incognito if on a shared device
+
+### Implementation
+
+- `src/middleware.ts` — Next.js middleware, matches `/admin/:path*`
+- `ADMIN_TOKEN` env var — set in Vercel dashboard and `.env.local`
+- `src/app/admin/login/page.tsx` — shown on cookie miss; has a token input field that triggers the `?token=` flow client-side
+- No DB changes required — token lives entirely in env + cookie
+
+### Identity (unchanged)
+
+Users identify themselves by selecting their name from a dropdown. The selected `employeeId` is saved to `localStorage`. This is not secure — anyone can impersonate anyone — but it is sufficient for the employee use case.
+
+`role = "admin"` is still used only to route Slack notifications to the right people. It does not replace the cookie-based admin gate.
 
 ---
 
@@ -234,7 +272,7 @@ The VietQR image URL fully encodes all parameters — amount, account number, tr
 RDL - {removeDiacritics(employeeName)} chuyen tien an trua
 ```
 
-Example: `"Hoàng Đỗ"` → `"RDL - Vu Ngoc Anh chuyen tien an trua"`
+Example: `"Hoàng Đỗ"` → `"RDL - Hoang Do chuyen tien an trua"`
 
 Diacritics are stripped because many Vietnamese bank apps reject transfer descriptions containing Unicode diacritics. The removal uses NFD normalization + combining mark strip + explicit `đ/Đ` replacement (these do not decompose under NFD):
 

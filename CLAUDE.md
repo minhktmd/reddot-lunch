@@ -4,7 +4,10 @@
 
 ## Project
 
-**Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
+**Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow.
+
+- **Employee identity:** no auth — users select their name from a dropdown stored in `localStorage`
+- **Admin access:** `/admin/*` pages are protected by a shared `ADMIN_TOKEN` cookie (set via `?token=` query param, validated in `src/middleware.ts`) — details in `docs/ARCHITECTURE.md`
 
 > ⚠️ **Infrastructure constraint:** The app runs on **Prisma Postgres (via Prisma Accelerate)** for the database. Key rules:
 > - **Never trigger an API call per user action in menu editing** — buffer all changes in the Zustand store and batch into a single request on explicit save/publish
@@ -79,8 +82,11 @@ src/
 │   │   ├── menu/page.tsx       → F3: Menu management
 │   │   ├── settings/page.tsx   → F4: App settings
 │   │   ├── employees/page.tsx  → F5: Employee management
-│   │   └── finance/page.tsx    → F6: Finance management
+│   │   ├── finance/page.tsx    → F6: Finance management
+│   │   └── login/page.tsx      → Admin token entry (shown on cookie miss / invalid token)
 │   └── api/                    → All API route handlers
+│
+├── middleware.ts               → Admin token validation for /admin/* routes
 │
 ├── features/                   → See "Feature Structure" below
 ├── domains/                    → See "Domain Structure" below
@@ -219,6 +225,8 @@ app/ → features/ → domains/ → shared/
 - ❌ Update employee balance directly — always write a `LedgerEntry`; balance is always computed as `SUM(ledgerEntries.amount)`
 - ❌ Create or cancel an order without a matching `LedgerEntry` in the same DB transaction — order mutations and their ledger debits are always atomic
 - ❌ Edit an existing `LedgerEntry` — entries are immutable; corrections are new `adjustment` entries
+- ❌ Apply `ADMIN_TOKEN` middleware to `/api/*` routes — the cookie gate applies only to `/admin/*` page routes, not API routes
+- ❌ Read `ADMIN_TOKEN` env var anywhere except `src/middleware.ts` — it is not a server-side API secret, only a page-access gate
 
 ---
 
@@ -243,7 +251,7 @@ app/ → features/ → domains/ → shared/
 - **Components:** function declarations (`export function Foo()`)
 - **Callbacks & handlers:** arrow functions (`const handleClick = () => {}`)
 - **`"use client"`:** required at the top of any file using hooks, events, or browser APIs
-- **Exports:** named exports everywhere — default exports only for Next.js file conventions (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `route.ts`)
+- **Exports:** named exports everywhere — default exports only for Next.js file conventions (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`, `not-found.tsx`, `route.ts`, `middleware.ts`)
 - **Barrel files:** re-export via `index.ts` using named exports only
 - **Path alias:** `@/*` → `src/*` — never use relative paths across feature boundaries
 - **Import order:** external packages → internal `@/` → relative → type imports
@@ -402,6 +410,16 @@ Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClie
 - **Ledger atomicity:** order create/edit/cancel must always update `LedgerEntry` in the same `prisma.$transaction` — never one without the other
 - **Balance computation:** always compute as `prisma.ledgerEntry.aggregate({ where: { employeeId }, _sum: { amount: true } })` — never store or cache balance as a field on `Employee`
 
+### Admin Middleware
+
+- `src/middleware.ts` matches `/admin/:path*` — do not extend the matcher to `/api/*`
+- Token comparison must use `crypto.timingSafeEqual` (or equivalent) to avoid timing attacks
+- Cookie name: `admin_token`; settings: `HttpOnly`, `SameSite=Strict`, `Max-Age=2592000` (30 days), `Secure` in production, `Path=/admin`
+- On valid `?token` query param: set cookie → redirect to `/admin` (strip token from URL)
+- On missing/invalid cookie (no `?token` present): redirect to `/admin/login`
+- `/admin/login` page is excluded from the middleware matcher so it is always accessible
+- `ADMIN_TOKEN` is read only in `middleware.ts` via `process.env.ADMIN_TOKEN` — middleware runs in the Edge runtime where `config/env.ts` Zod validation may not be available; read directly and guard against undefined
+
 ### Price & Date Formatting
 
 - **Prices:** display as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`) — store as integer VND
@@ -427,7 +445,7 @@ model AppConfig {
   id              String   @id @default("singleton")
   bankCode        String?  // VietQR BIN code, e.g. "970422" for MB
   bankAccount     String?  // bank account number
-  bankAccountName String?  // account holder name, ALL CAPS no diacritics, e.g. "VU NGOC ANH"
+  bankAccountName String?  // account holder name, ALL CAPS no diacritics, e.g. "HOANG DO"
   updatedAt       DateTime @updatedAt
 
   @@map("app_config")
@@ -578,3 +596,4 @@ Note: F8 (MenuItem Management) has been removed — there is no dish catalog.
 - **Tempted to call API per edit:** don't — buffer in store, batch on save
 - **Balance wrong:** trace back to `LedgerEntry` records — balance is always a live SUM, never a stored field
 - **Order mutation missing ledger debit:** every order create/edit/cancel must wrap order + ledger in `prisma.$transaction`
+- **Admin redirect loop:** check that `/admin/login` is excluded from the middleware matcher

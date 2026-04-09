@@ -20,11 +20,12 @@
 | Role | How identified | Access |
 |---|---|---|
 | **Member** | Selects name from dropdown on first visit | `/` only |
-| **Admin** | `Employee.role = "admin"` | `/` + all `/admin/*` routes |
+| **Admin** | Knows the `ADMIN_TOKEN` (shared out-of-band) | `/` + all `/admin/*` routes |
 
-- No login, no session, no tokens — all routes are publicly accessible
-- `role` is used only for Slack notification routing, not for access control
-- Multiple admins are allowed
+- Employee identity (name selection) has no auth — anyone can select any name
+- `/admin/*` pages are protected by a shared token stored as an `HttpOnly` cookie — details in `docs/ARCHITECTURE.md`
+- `role = "admin"` on `Employee` is used only for Slack notification routing, not for access control
+- Multiple employees can have `role = "admin"` (for Slack purposes)
 
 ---
 
@@ -214,7 +215,8 @@ src/
 │   │   ├── menu/page.tsx                 → F3: Menu management
 │   │   ├── settings/page.tsx             → F4: App settings
 │   │   ├── employees/page.tsx            → F5: Employee management
-│   │   └── finance/page.tsx              → F6: Finance management
+│   │   ├── finance/page.tsx              → F6: Finance management
+│   │   └── login/page.tsx                → Admin token entry (shown on cookie miss)
 │   └── api/                              → All API route handlers
 │
 ├── features/
@@ -267,6 +269,7 @@ SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 NEXT_PUBLIC_APP_URL="https://datcom.company.com"
 TZ="Asia/Ho_Chi_Minh"
 CRON_SECRET="random-secret-string"
+ADMIN_TOKEN="random-secret-string"        # shared admin access token for /admin/* pages
 ```
 
 Note: `BLOB_READ_WRITE_TOKEN` has been **removed** — Vercel Blob is no longer used. Bank account info is stored in the DB (`AppConfig`); QR codes are generated client-side via VietQR.
