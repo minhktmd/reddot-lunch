@@ -68,9 +68,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // All in a single transaction: cascade-delete orders, delete removed items, upsert submitted items
     const updated = await prisma.$transaction(async (tx) => {
-      // For removed items: delete their orders first, then delete the items
+      // For removed items: clean up ledger entries, delete orders, then delete items
       for (const item of itemsToRemove) {
-        await tx.order.deleteMany({ where: { menuOfDayItemId: item.id } });
+        const orders = await tx.order.findMany({
+          where: { menuOfDayItemId: item.id },
+          select: { id: true },
+        });
+        const orderIds = orders.map((o) => o.id);
+
+        if (orderIds.length > 0) {
+          await tx.ledgerEntry.deleteMany({ where: { orderId: { in: orderIds } } });
+          await tx.order.deleteMany({ where: { id: { in: orderIds } } });
+        }
+
         await tx.menuOfDayItem.delete({ where: { id: item.id } });
       }
 

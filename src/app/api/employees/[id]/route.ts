@@ -20,9 +20,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     const { id } = await params;
 
     const result = await prisma.$transaction(async (tx) => {
+      const ledgerDeleted = await tx.ledgerEntry.deleteMany({ where: { employeeId: id } });
       const ordersDeleted = await tx.order.deleteMany({ where: { employeeId: id } });
       await tx.employee.delete({ where: { id } });
-      return { deleted: true, ordersDeleted: ordersDeleted.count };
+      return { deleted: true, ordersDeleted: ordersDeleted.count, ledgerDeleted: ledgerDeleted.count };
     });
 
     revalidateTag('employees', { expire: 0 });
