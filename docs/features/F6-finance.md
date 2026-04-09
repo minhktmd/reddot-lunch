@@ -214,8 +214,14 @@ Clicking [▶ Chi tiết] on a lunch day row expands it inline:
 04/04/2026  🍱 Cơm trưa                    -450.000đ  [▼ Ẩn]
   ┌──────────────────────────────────────────────────────┐
   │  Cơm gà Hội An      ×5   225.000đ                   │
+  │    • Nguyễn Văn A   ×1                               │
+  │    • Trần Thị B     ×2                               │
+  │    • Hoàng Đỗ       ×2                               │
   │  Cơm bò             ×3   135.000đ                   │
+  │    • Lê Minh Đức    ×1                               │
+  │    • Hồ Bá Hưng     ×2                               │
   │  Phở gà HN          ×2    90.000đ                   │
+  │    • Ngô Duy Nghĩa  ×2                               │
   │  ──────────────────────────────────                  │
   │  10 suất             Tổng: 450.000đ                  │
   └──────────────────────────────────────────────────────┘
@@ -319,6 +325,7 @@ type FundLedgerItem =
         name: string
         quantity: number
         subtotal: number      // quantity × price
+        employees: { name: string; quantity: number }[]  // sorted by name asc
       }[]
     }
   | {

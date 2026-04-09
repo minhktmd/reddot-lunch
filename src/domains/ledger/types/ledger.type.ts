@@ -34,6 +34,7 @@ export type FundLedgerDish = {
   name: string;
   quantity: number;
   subtotal: number;
+  employees: { name: string; quantity: number }[];
 };
 
 export type FundLedgerItem =

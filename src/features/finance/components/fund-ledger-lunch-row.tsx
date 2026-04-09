@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 
+import type { FundLedgerDish } from '@/domains/ledger';
+
 import { FundLedgerLunchDetail } from './fund-ledger-lunch-detail';
 
 type FundLedgerLunchRowProps = {
   date: string;
   totalAmount: number;
   orderCount: number;
-  dishes: { name: string; quantity: number; subtotal: number }[];
+  dishes: FundLedgerDish[];
 };
 
 function formatDisplayDate(dateStr: string): string {

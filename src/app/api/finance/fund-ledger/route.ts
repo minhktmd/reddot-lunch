@@ -27,21 +27,45 @@ export async function GET(request: NextRequest) {
       }),
       prisma.menuOfDay.findMany({
         where: { date: { gte: monthStart, lt: monthEnd }, isPublished: true, orders: { some: {} } },
-        include: { orders: { include: { menuOfDayItem: { select: { name: true, price: true } } } } },
+        include: {
+          orders: {
+            include: {
+              menuOfDayItem: { select: { name: true, price: true } },
+              employee: { select: { name: true } },
+            },
+          },
+        },
       }),
     ]);
 
     const lunchItems = menuDays.map((day) => {
-      const dishMap = new Map<string, { quantity: number; subtotal: number }>();
+      const dishMap = new Map<
+        string,
+        { quantity: number; subtotal: number; employeeMap: Map<string, number> }
+      >();
       for (const order of day.orders) {
-        const existing = dishMap.get(order.menuOfDayItem.name) ?? { quantity: 0, subtotal: 0 };
-        dishMap.set(order.menuOfDayItem.name, {
-          quantity: existing.quantity + order.quantity,
-          subtotal: existing.subtotal + order.quantity * order.menuOfDayItem.price,
-        });
+        const existing = dishMap.get(order.menuOfDayItem.name) ?? {
+          quantity: 0,
+          subtotal: 0,
+          employeeMap: new Map<string, number>(),
+        };
+        existing.quantity += order.quantity;
+        existing.subtotal += order.quantity * order.menuOfDayItem.price;
+        existing.employeeMap.set(
+          order.employee.name,
+          (existing.employeeMap.get(order.employee.name) ?? 0) + order.quantity,
+        );
+        dishMap.set(order.menuOfDayItem.name, existing);
       }
       const dishes = Array.from(dishMap.entries())
-        .map(([name, { quantity, subtotal }]) => ({ name, quantity, subtotal }))
+        .map(([name, { quantity, subtotal, employeeMap }]) => ({
+          name,
+          quantity,
+          subtotal,
+          employees: Array.from(employeeMap.entries())
+            .map(([empName, qty]) => ({ name: empName, quantity: qty }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        }))
         .sort((a, b) => b.quantity - a.quantity);
       const totalAmount = dishes.reduce((sum, d) => sum + d.subtotal, 0);
       return {

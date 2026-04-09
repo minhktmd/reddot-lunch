@@ -241,6 +241,38 @@ type TopupInput = {
 }
 ```
 
+### GET /api/finance/fund-ledger?month=YYYY-MM
+
+```ts
+type FundLedgerDish = {
+  name: string
+  quantity: number
+  subtotal: number
+  employees: { name: string; quantity: number }[]  // sorted by name asc
+}
+
+type FundLedgerItem =
+  | {
+      type: "lunch_day"
+      date: string
+      totalAmount: number
+      orderCount: number
+      dishes: FundLedgerDish[]
+    }
+  | {
+      type: "topup" | "adjustment"
+      date: string
+      amount: number
+      employeeName: string
+      note: string | null
+    }
+
+type FundLedgerResponse = {
+  month: string
+  items: FundLedgerItem[]
+}
+```
+
 ### POST /api/finance/adjust (admin only)
 
 ```ts

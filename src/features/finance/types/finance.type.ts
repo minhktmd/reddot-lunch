@@ -36,6 +36,7 @@ export const fundLedgerDishSchema = z.object({
   name: z.string(),
   quantity: z.number(),
   subtotal: z.number(),
+  employees: z.array(z.object({ name: z.string(), quantity: z.number() })),
 });
 
 export const fundLedgerItemSchema = z.discriminatedUnion('type', [
