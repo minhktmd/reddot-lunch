@@ -103,9 +103,8 @@ When admin makes any change to standard items (edit a cell, add a row, delete a 
 
 **Save flow for standard items ("Lưu thay đổi"):**
 1. `PATCH /api/menu/[id]/items` with full current item list — single request
-2. Server diffs: deletes removed items (blocked if they have orders), upserts remaining
-3. If any items cannot be deleted because they have orders → return 409 → show error toast: `"Không thể xóa: [tên món] đã có đơn hàng"`
-4. On success: `hasUnsavedChanges = false`, button disappears
+2. Server diffs: cascade-deletes removed items (along with their orders and ledger entries), upserts remaining
+3. On success: `hasUnsavedChanges = false`, button disappears
 
 ---
 

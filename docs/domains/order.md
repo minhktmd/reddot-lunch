@@ -47,7 +47,7 @@ Note: There is **no `isPaid` / `paidAt`** on `Order`. Payment state is replaced 
 - Orders can only be created when `MenuOfDay.isPublished = true` AND `MenuOfDay.isLocked = false`
 - One employee can place multiple orders on the same day (different `menuOfDayItemId`)
 - `menuOfDayId` must match the `menuOfDayItem.menuOfDayId` — cannot mix items from different days
-- Creating an order does **not** directly write a `LedgerEntry` to the DB — balance is computed client-side for display. The ledger records orders via `orderId` reference at the time of display/query.
+- Creating an order also writes a `LedgerEntry` of type `order_debit` in the same DB transaction — see Ledger domain for details
 
 ### Editing an order
 
@@ -58,7 +58,7 @@ Note: There is **no `isPaid` / `paidAt`** on `Order`. Payment state is replaced 
 
 - Only allowed while `MenuOfDay.isLocked = false`
 - Hard delete — the `Order` record is removed from the database
-- No ledger reversal needed on cancel: the ledger debit for this order (if any was recorded) is computed from live `Order` records, not stored as a separate row — see Ledger domain for details
+- The corresponding `LedgerEntry` of type `order_debit` is also deleted in the same transaction — see Ledger domain for details
 
 ### Guard (applied in all order mutation API routes)
 

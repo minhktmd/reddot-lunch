@@ -181,13 +181,13 @@ Admin fills in standard dishes in the spreadsheet table and/or adds external dis
 
 ### Post-publish (Screen 2)
 
-**Standard items:** admin edits inline → "Lưu thay đổi" → `PATCH /api/menu/[id]/items` — single request. Server diffs: upserts matching items, deletes removed items. If a removed item has orders → return 409 with blocked dish names.
+**Standard items:** admin edits inline → "Lưu thay đổi" → `PATCH /api/menu/[id]/items` — single request. Server diffs: upserts matching items, cascade-deletes removed items. If a removed item has orders, the orders and their `LedgerEntry` records are deleted in the same transaction.
 
 **External dishes:** each add or remove writes directly to the DB — not store-buffered. Component derives the full new array and calls `PATCH /api/menu/[id]/external-dishes`. On success: invalidate `queryKeys.menu.today()`.
 
-### MenuOfDayItem deletion guard
+### MenuOfDayItem deletion cascade
 
-Cannot delete a `MenuOfDayItem` that has existing `Order` records. The PATCH endpoint returns a 409 with the list of blocked dish names.
+Deleting a `MenuOfDayItem` cascade-deletes all associated `Order` records and their `LedgerEntry` records (type `order_debit`) in the same transaction. This ensures employee balances stay correct when an admin removes a dish post-publish.
 
 ---
 

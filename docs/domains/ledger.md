@@ -172,6 +172,10 @@ Admin never directly edits existing `LedgerEntry` records. To correct a balance,
 
 Creating, editing, or cancelling an order always updates the ledger in the same DB transaction. It is never valid to have an `Order` without a corresponding `LedgerEntry` of type `order_debit`, or vice versa.
 
+This invariant also holds for indirect deletions:
+- **Menu item removal:** when an admin removes a dish post-publish, all orders for that item and their `order_debit` ledger entries are deleted in the same transaction
+- **Employee hard-delete:** when a super admin deletes an employee, all their ledger entries (topups, debits, adjustments) and orders are deleted in the same transaction
+
 ---
 
 ## Fund Overview (Admin)

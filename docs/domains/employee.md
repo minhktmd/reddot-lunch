@@ -63,9 +63,15 @@ export type EmployeeRole = typeof EMPLOYEE_ROLE[keyof typeof EMPLOYEE_ROLE]
 
 ### Soft Delete
 
-- Never hard-delete an employee — set `isActive = false`
+- The default removal method is soft delete — set `isActive = false`
 - Inactive employees: hidden from name dropdowns, excluded from auto order, excluded from all admin listings
 - Historical `Order` records remain intact and still reference the employee
+
+### Hard Delete (super admin only)
+
+- Not exposed in the frontend UI — used only by super admins via direct API call
+- `DELETE /api/employees/[id]` removes the employee and cascade-deletes all their `LedgerEntry` records and `Order` records in the same transaction
+- This is irreversible — use soft delete unless the employee record must be fully purged
 
 ### Auto Order Flag
 
