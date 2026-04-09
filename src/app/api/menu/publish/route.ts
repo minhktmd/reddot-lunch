@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { revalidateTag } from 'next/cache';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -8,6 +10,8 @@ import { buildAutoOrderMessage, buildMenuPublishedMessage } from '@/features/sla
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
 import { postChannel, postDM } from '@/shared/lib/slack';
+
+const formatDateVN = (d: Date) => format(toZonedTime(d, 'Asia/Ho_Chi_Minh'), 'dd/MM/yyyy');
 
 const externalDishItemSchema = z.object({
   name: z.string().min(1),
@@ -81,13 +85,23 @@ export async function POST(request: NextRequest) {
           if (existingOrder > 0) continue;
 
           const randomItem = menuOfDay.items[Math.floor(Math.random() * menuOfDay.items.length)];
-          await tx.order.create({
+          const newOrder = await tx.order.create({
             data: {
               menuOfDayId: menuOfDay.id,
               employeeId: employee.id,
               menuOfDayItemId: randomItem.id,
               quantity: 1,
               isAutoOrder: true,
+            },
+          });
+          await tx.ledgerEntry.create({
+            data: {
+              employeeId: employee.id,
+              amount: -(randomItem.price * 1),
+              type: 'order_debit',
+              orderId: newOrder.id,
+              note: formatDateVN(menuOfDay.date),
+              createdBy: null,
             },
           });
         }

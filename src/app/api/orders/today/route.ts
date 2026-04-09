@@ -28,8 +28,6 @@ export async function GET() {
         id: order.id,
         quantity: order.quantity,
         isAutoOrder: order.isAutoOrder,
-        isPaid: order.isPaid,
-        paidAt: order.paidAt?.toISOString() ?? null,
         employee: order.employee,
         menuOfDayItem: {
           id: order.menuOfDayItem.id,

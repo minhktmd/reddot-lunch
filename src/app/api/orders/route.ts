@@ -1,9 +1,13 @@
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { parseDateParam } from '@/domains/menu';
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
+
+const formatDateVN = (d: Date) => format(toZonedTime(d, 'Asia/Ho_Chi_Minh'), 'dd/MM/yyyy');
 
 const createOrderSchema = z.object({
   employeeId: z.string().min(1),
@@ -40,8 +44,6 @@ export async function GET(request: NextRequest) {
         id: order.id,
         quantity: order.quantity,
         isAutoOrder: order.isAutoOrder,
-        isPaid: order.isPaid,
-        paidAt: order.paidAt?.toISOString() ?? null,
         menuOfDayItem: {
           id: order.menuOfDayItem.id,
           name: order.menuOfDayItem.name,
@@ -80,14 +82,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Không thể đặt món lúc này' }, { status: 403 });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        menuOfDayId: menuOfDayItem.menuOfDayId,
-        employeeId,
-        menuOfDayItemId,
-        quantity,
-      },
-      include: { menuOfDayItem: true },
+    const order = await prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          menuOfDayId: menuOfDayItem.menuOfDayId,
+          employeeId,
+          menuOfDayItemId,
+          quantity,
+        },
+        include: { menuOfDayItem: true },
+      });
+      await tx.ledgerEntry.create({
+        data: {
+          employeeId,
+          amount: -(menuOfDayItem.price * quantity),
+          type: 'order_debit',
+          orderId: newOrder.id,
+          note: formatDateVN(menuOfDayItem.menuOfDay.date),
+          createdBy: null,
+        },
+      });
+      return newOrder;
     });
 
     return NextResponse.json(
@@ -95,8 +110,6 @@ export async function POST(request: NextRequest) {
         id: order.id,
         quantity: order.quantity,
         isAutoOrder: order.isAutoOrder,
-        isPaid: order.isPaid,
-        paidAt: order.paidAt?.toISOString() ?? null,
         menuOfDayItem: {
           id: order.menuOfDayItem.id,
           name: order.menuOfDayItem.name,

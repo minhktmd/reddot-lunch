@@ -41,8 +41,6 @@ export function usePlaceOrder(employeeId: string) {
         id: `opt-${Date.now()}`,
         quantity: variables.quantity,
         isAutoOrder: false,
-        isPaid: false,
-        paidAt: null,
         menuOfDayItem,
       };
 
@@ -55,6 +53,7 @@ export function usePlaceOrder(employeeId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.byEmployee(employeeId, date) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.finance.balance(employeeId) });
       toast.success('Đặt món thành công');
     },
   });

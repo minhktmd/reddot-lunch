@@ -4,8 +4,6 @@ export const orderItemSchema = z.object({
   id: z.string(),
   quantity: z.number(),
   isAutoOrder: z.boolean(),
-  isPaid: z.boolean(),
-  paidAt: z.string().nullable(),
   menuOfDayItem: z.object({
     id: z.string(),
     name: z.string(),
@@ -15,20 +13,6 @@ export const orderItemSchema = z.object({
 });
 
 export type OrderItem = z.infer<typeof orderItemSchema>;
-
-export const unpaidOrderItemSchema = z.object({
-  id: z.string(),
-  quantity: z.number(),
-  isPaid: z.literal(false),
-  menuOfDay: z.object({ id: z.string(), date: z.string() }),
-  menuOfDayItem: z.object({
-    id: z.string(),
-    name: z.string(),
-    price: z.number(),
-  }),
-});
-
-export type UnpaidOrderItem = z.infer<typeof unpaidOrderItemSchema>;
 
 export const appConfigSchema = z.object({
   id: z.string(),

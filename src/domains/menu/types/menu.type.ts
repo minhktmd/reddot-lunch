@@ -38,8 +38,6 @@ export type TodayOrderItem = {
   id: string;
   quantity: number;
   isAutoOrder: boolean;
-  isPaid: boolean;
-  paidAt: string | null;
   employee: { id: string; name: string };
   menuOfDayItem: {
     id: string;

@@ -20,20 +20,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: true, skipped: 'no menu today' });
     }
 
-    const unpaidEmployees = await prisma.order.findMany({
-      where: { menuOfDayId: menu.id, isPaid: false },
-      select: { employeeId: true },
-      distinct: ['employeeId'],
+    const grouped = await prisma.ledgerEntry.groupBy({
+      by: ['employeeId'],
+      _sum: { amount: true },
     });
-    if (unpaidEmployees.length === 0) {
-      return NextResponse.json({ ok: true, skipped: 'everyone paid' });
+    const inDebtCount = grouped.filter((g) => (g._sum.amount ?? 0) < 0).length;
+
+    if (inDebtCount === 0) {
+      return NextResponse.json({ ok: true, skipped: 'no one in debt' });
     }
 
-    await postChannel(
-      `💰 ${unpaidEmployees.length} người chưa trả tiền cơm hôm nay. Trả tại: ${env.NEXT_PUBLIC_APP_URL}`
-    );
+    await postChannel(`💰 ${inDebtCount} người đang có số dư âm. Vào đây để nạp tiền: ${env.NEXT_PUBLIC_APP_URL}`);
 
-    return NextResponse.json({ ok: true, reminded: unpaidEmployees.length });
+    return NextResponse.json({ ok: true, reminded: inDebtCount });
   } catch (error) {
     logger.error('[cron/remind-payment]', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

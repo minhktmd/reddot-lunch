@@ -1,13 +1,14 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { LayoutDashboard, UtensilsCrossed, Users, BarChart2, Settings } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Users, Wallet, Settings } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback } from 'react';
 
 import { getTodayAdminOrders } from '@/features/admin-dashboard';
+import { getFinanceSummary } from '@/features/finance/services/finance.service';
 import { getMenuSuggestions } from '@/features/menu-management';
 import { ThemeToggle } from '@/shared/components/atoms/theme-toggle';
 import { queryKeys } from '@/shared/constants/query-keys';
@@ -19,7 +20,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Tổng quan', icon: LayoutDashboard },
   { href: '/admin/menu', label: 'Thực đơn hôm nay', icon: UtensilsCrossed },
   { href: '/admin/employees', label: 'Nhân viên', icon: Users },
-  { href: '/admin/report', label: 'Báo cáo tháng', icon: BarChart2 },
+  { href: '/admin/finance', label: 'Tài chính', icon: Wallet },
   { href: '/admin/settings', label: 'Cài đặt', icon: Settings },
 ] as const;
 
@@ -96,6 +97,8 @@ function usePrefetchHandlers() {
         queryClient.prefetchQuery({ queryKey: queryKeys.orders.today, queryFn: getTodayAdminOrders });
       } else if (href === '/admin/menu') {
         queryClient.prefetchQuery({ queryKey: queryKeys.menu.suggestions, queryFn: getMenuSuggestions });
+      } else if (href === '/admin/finance') {
+        queryClient.prefetchQuery({ queryKey: queryKeys.finance.summary(), queryFn: getFinanceSummary });
       }
     },
     [queryClient]

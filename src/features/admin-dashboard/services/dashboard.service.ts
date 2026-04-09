@@ -77,6 +77,3 @@ export async function getTodayAdminOrders(): Promise<TodayAdminOrder[]> {
   return result.data;
 }
 
-export async function unpayOrders(employeeId: string, date: string): Promise<void> {
-  await apiClient.patch('/api/orders/unpay', { employeeId, date });
-}

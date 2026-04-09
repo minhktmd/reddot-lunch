@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { logger } from '@/shared/lib/logger';
 import { apiClient } from '@/shared/services/api';
 
-import { orderItemSchema, unpaidOrderItemSchema, type OrderItem, type UnpaidOrderItem } from '../types/order.type';
+import { orderItemSchema, type OrderItem } from '../types/order.type';
 
 type PlaceOrderInput = {
   employeeId: string;
@@ -21,16 +21,6 @@ export async function getTodayOrders(employeeId: string, date: string): Promise<
   const result = z.array(orderItemSchema).safeParse(response.data);
   if (!result.success) {
     logger.error('[getTodayOrders] Invalid response', result.error);
-    return [];
-  }
-  return result.data;
-}
-
-export async function getUnpaidOrders(employeeId: string): Promise<UnpaidOrderItem[]> {
-  const response = await apiClient.get<unknown>('/api/orders/unpaid', { params: { employeeId } });
-  const result = z.array(unpaidOrderItemSchema).safeParse(response.data);
-  if (!result.success) {
-    logger.error('[getUnpaidOrders] Invalid response', result.error);
     return [];
   }
   return result.data;
@@ -60,6 +50,3 @@ export async function cancelOrder(id: string): Promise<void> {
   await apiClient.delete(`/api/orders/${id}`);
 }
 
-export async function payAllOrders(employeeId: string): Promise<void> {
-  await apiClient.patch('/api/orders/pay', { employeeId });
-}

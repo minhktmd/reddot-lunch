@@ -1,7 +1,7 @@
 # SPEC: Home (F1)
 
 > Employee-facing home page. The only page most employees will ever use.
-> Domain knowledge → `docs/domains/order.md`, `docs/domains/employee.md`, `docs/domains/menu.md`.
+> Domain knowledge → `docs/domains/order.md`, `docs/domains/employee.md`, `docs/domains/menu.md`, `docs/domains/ledger.md`.
 > Route: `/`
 
 ---
@@ -12,7 +12,7 @@ Single page with three concerns:
 
 1. **Name selection** — first visit only; subsequent visits skip straight to the order form
 2. **Order tab** — view today's menu (standard dishes + external dish links), place/edit/cancel orders
-3. **Payment tab** — view all unpaid orders, pay all at once via QR code
+3. **Finance tab** — view balance, top up, view transaction history
 
 Auto order toggle lives as a small persistent setting below the tabs.
 
@@ -40,7 +40,15 @@ Shown when `localStorage` has no `selectedEmployeeId` or the stored ID no longer
 
 Header shows selected employee name + a small "Đổi tên" link to reset `localStorage` and return to Screen 1.
 
-Two tabs: **Đặt cơm** (Order) and **Thanh toán** (Payment).
+Balance is shown inline next to the name in the header:
+- Balance ≥ 0: `"Số dư: {balance}đ"` in green
+- Balance < 0: `"Nợ: {abs(balance)}đ"` in red
+
+Two tabs: **Đặt cơm** (Order) and **Tài chính** (Finance).
+
+Tab label for Finance shows current balance:
+- Balance ≥ 0: `"Tài chính · {balance}đ"` (normal)
+- Balance < 0: `"Tài chính · -{abs(balance)}đ"` (red)
 
 Auto order toggle always visible below the tabs.
 
@@ -96,7 +104,6 @@ Cơm tấm Kiều Giang
 **External-dishes-only day** — when `items.length === 0` and `externalDishes.length > 0`:
 - Standard menu cards section and order list are hidden entirely
 - Only the external dishes section is shown
-- No "Đặt món" button, no order list — there is nothing to order through the system
 
 #### State C — Menu locked
 
@@ -104,31 +111,30 @@ Same as State B but:
 - No "Đặt món" button
 - No "Sửa" / "Hủy" actions on orders
 - Read-only banner: `"Admin đã chốt sổ. Không thể thay đổi đơn hàng."`
-- External dishes section remains visible and links remain clickable — locking does not affect display-only links
+- External dishes section remains visible and links remain clickable
 
 ---
 
-### Tab: Thanh toán (Payment)
+### Tab: Tài chính (Finance)
 
-#### State A — No unpaid orders
+See `docs/features/F6-finance.md` for full Finance tab spec. Summary:
+
+#### Balance Card
+
+Shows current balance. Negative balance shows a warning. QR code shown for bank transfer reference.
+
+#### Top-up Form
 
 ```
-Bạn không có khoản nợ nào. 🎉
+Số tiền đã chuyển khoản: [___________] đ
+[Xác nhận nạp tiền]
 ```
 
-#### State B — Has unpaid orders
+Member enters the amount they've already transferred → `POST /api/finance/topup` → balance updates immediately.
 
-Table of all unpaid orders across entire history:
+#### Transaction History
 
-| Ngày | Món | SL | Đơn giá | Thành tiền |
-|---|---|---|---|---|
-| 04/04/2026 | Cơm gà Hội An | 1 | 45.000đ | 45.000đ |
-| 03/04/2026 | Cơm thịt kho tàu | 2 | 45.000đ | 90.000đ |
-
-- **Tổng cần trả:** `135.000đ` — shown prominently
-- QR code image from `AppConfig.qrCodeUrl` (if set)
-- "Xác nhận đã chuyển khoản" button → `PATCH /api/orders/pay` with `{ employeeId }` → marks all unpaid orders as paid
-- After confirmation: table clears, show State A
+Full ledger for this employee: top-ups, order debits, admin adjustments. Newest first.
 
 ---
 
@@ -143,7 +149,6 @@ Always visible below the tabs, regardless of which tab is active.
 - Reflects current `Employee.autoOrder` value
 - On toggle: `PATCH /api/employees/[id]` with `{ autoOrder: boolean }` — fire and forget, optimistic update
 - Small helper text: `"Hệ thống sẽ tự đặt một món ngẫu nhiên khi admin đăng thực đơn"`
-- Auto order only applies to standard menu items — external dishes are never auto-ordered
 
 ---
 
@@ -157,14 +162,16 @@ Always visible below the tabs, regardless of which tab is active.
 - [ ] US6: Employee can edit quantity or change dish of an existing order
 - [ ] US7: Employee can cancel an existing order
 - [ ] US8: Employee sees read-only view with locked banner when admin has locked orders
-- [ ] US9: Employee sees all unpaid orders across history in the Payment tab
-- [ ] US10: Employee can confirm payment — all unpaid orders marked as paid at once
-- [ ] US11: Employee can toggle auto order on/off — persisted immediately
-- [ ] US12: Employee can switch to a different name via "Đổi tên"
-- [x] US13: Employee sees external dish links when any are available for today
-- [x] US14: Clicking an external dish link opens the delivery platform in a new tab
-- [x] US15: External dish links remain visible and clickable when orders are locked
-- [x] US16: On an external-dishes-only day, employee sees only external dish links — no standard menu cards or order list
+- [ ] US9: Employee sees their current balance in the header and on the Finance tab label
+- [ ] US10: Employee with negative balance sees a warning
+- [ ] US11: Employee can submit a top-up amount — balance updates immediately
+- [ ] US12: Employee can view their full transaction history
+- [ ] US13: Employee can toggle auto order on/off — persisted immediately
+- [ ] US14: Employee can switch to a different name via "Đổi tên"
+- [x] US15: Employee sees external dish links when any are available for today
+- [x] US16: Clicking an external dish link opens the delivery platform in a new tab
+- [x] US17: External dish links remain visible and clickable when orders are locked
+- [x] US18: On an external-dishes-only day, employee sees only external dish links
 
 ---
 
@@ -175,14 +182,13 @@ Always visible below the tabs, regardless of which tab is active.
 | Load employee list | GET | `/api/employees` | — |
 | Load today's menu | GET | `/api/menu/today` | — |
 | Load today's orders | GET | `/api/orders?employeeId=&date=` | — |
-| Load unpaid orders | GET | `/api/orders/unpaid?employeeId=` | — |
+| Load balance | GET | `/api/finance/balance?employeeId=` | — |
+| Load ledger history | GET | `/api/finance/ledger?employeeId=` | — |
 | Place order | POST | `/api/orders` | `{ employeeId, menuOfDayItemId, quantity }` |
 | Edit order | PATCH | `/api/orders/[id]` | `{ menuOfDayItemId?, quantity? }` |
 | Cancel order | DELETE | `/api/orders/[id]` | — |
-| Confirm payment | PATCH | `/api/orders/pay` | `{ employeeId }` |
+| Top up | POST | `/api/finance/topup` | `{ employeeId, amount }` |
 | Toggle auto order | PATCH | `/api/employees/[id]` | `{ autoOrder: boolean }` |
-
-`GET /api/menu/today` response includes `externalDishes: { name: string, orderUrl: string }[]` — no extra API call needed for the external dishes section.
 
 ---
 
@@ -192,30 +198,28 @@ Always visible below the tabs, regardless of which tab is active.
 features/home/
 ├── components/
 │   ├── home-name-select.tsx       — Screen 1: name selection
-│   ├── home-header.tsx            — Selected name + "Đổi tên" link
-│   ├── home-tabs.tsx              — Tab switcher (Đặt cơm / Thanh toán)
+│   ├── home-header.tsx            — Selected name + balance display + "Đổi tên" link
+│   ├── home-tabs.tsx              — Tab switcher (Đặt cơm / Tài chính with balance label)
 │   ├── order-tab.tsx              — Tab: Đặt cơm (orchestrates states A/B/C)
 │   ├── order-menu-card.tsx        — Single meal portion card with "Đặt món" button
 │   ├── order-form.tsx             — Place/edit order form (quantity + item select)
 │   ├── order-list.tsx             — Today's orders table with edit/cancel actions
-│   ├── order-external-dishes.tsx  — External dish links section (name + link button per item)
-│   ├── payment-tab.tsx            — Tab: Thanh toán (orchestrates states A/B)
-│   ├── payment-table.tsx          — Unpaid orders table
-│   ├── payment-qr.tsx             — QR code image + total amount + confirm button
+│   ├── order-external-dishes.tsx  — External dish links section
+│   ├── finance-tab.tsx            — Tab: Tài chính (imports from features/finance)
 │   └── auto-order-toggle.tsx      — Toggle switch + helper text
 ├── hooks/
 │   ├── use-today-menu.ts          — GET /api/menu/today
 │   ├── use-today-orders.ts        — GET /api/orders?employeeId=&date=
-│   ├── use-unpaid-orders.ts       — GET /api/orders/unpaid?employeeId=
 │   ├── use-place-order.ts         — POST /api/orders
 │   ├── use-edit-order.ts          — PATCH /api/orders/[id]
 │   ├── use-cancel-order.ts        — DELETE /api/orders/[id]
-│   ├── use-pay-all.ts             — PATCH /api/orders/pay
 │   └── use-toggle-auto-order.ts   — PATCH /api/employees/[id]
 ├── stores/
 │   └── home.store.ts              — selectedEmployeeId (synced with localStorage)
 └── index.ts
 ```
+
+Finance tab content (balance card, topup form, history) is implemented in `features/finance/` and composed here.
 
 ---
 
@@ -239,16 +243,15 @@ export const useHomeStore = create<HomeStore>((set) => ({
 }))
 ```
 
-All server state (menu, orders, employees) managed by TanStack Query.
+All server state (menu, orders, employees, balance) managed by TanStack Query.
 
 ---
 
 ## Notes
 
-- **Polling:** `use-today-menu` and `use-today-orders` should refetch every 30s — the menu state (`isPublished`, `isLocked`, `externalDishes`) can change while the employee has the page open
-- **QR code:** if `AppConfig.qrCodeUrl` is null, hide the QR section entirely — do not show a broken image
-- **Price formatting:** always display VND amounts as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`)
-- **Date display:** use `dd/MM/yyyy` format throughout (e.g. `04/04/2026`)
-- **External dishes:** sourced from `use-today-menu` response — no separate hook or API call needed; entire section hidden when `externalDishes` is empty
-- **External dish links:** always `target="_blank" rel="noopener noreferrer"`
-- **External-dishes-only day:** when `items.length === 0`, skip rendering standard menu cards and order list entirely — show only the external dishes section with a note that ordering is done externally
+- **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s
+- **Balance polling:** `use-my-balance` does NOT need to poll — it invalidates on top-up mutation and on order place/cancel/edit mutations
+- **QR code:** if `AppConfig.qrCodeUrl` is null, hide the QR section entirely
+- **Price formatting:** `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`)
+- **Date display:** `dd/MM/yyyy` format throughout
+- **Balance in tab label:** loading state shows `"Tài chính"` without amount until query resolves

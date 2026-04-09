@@ -31,12 +31,12 @@ export function EmployeeTable() {
         <table className="w-full min-w-175 text-left">
           <thead className="border-border bg-muted text-muted-foreground border-b text-xs font-medium tracking-wide uppercase">
             <tr>
-              <th className="px-4 py-3">Tên</th>
+              <th className="whitespace-nowrap px-4 py-3">Tên</th>
               <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Slack ID</th>
-              <th className="px-4 py-3">Vai trò</th>
-              <th className="px-4 py-3 text-center">Tự động đặt</th>
-              <th className="px-4 py-3">Trạng thái</th>
+              <th className="whitespace-nowrap px-4 py-3">Slack ID</th>
+              <th className="whitespace-nowrap px-4 py-3">Vai trò</th>
+              <th className="whitespace-nowrap px-4 py-3 text-center">Tự động đặt</th>
+              <th className="whitespace-nowrap px-4 py-3">Trạng thái</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>

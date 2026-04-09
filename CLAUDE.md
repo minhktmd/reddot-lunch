@@ -15,24 +15,24 @@
 
 ## Tech Stack
 
-| Concern       | Technology                                    |
-| ------------- | --------------------------------------------- |
-| Framework     | Next.js 16 / App Router                       |
-| Language      | TypeScript 5.x                                |
-| Styling       | Tailwind CSS v4                               |
-| UI Components | shadcn/ui                                     |
-| Server State  | TanStack Query v5                             |
-| Client State  | Zustand                                       |
-| Validation    | Zod v4                                        |
-| Forms         | React Hook Form v7 + @hookform/resolvers v5   |
-| Notifications | Sonner                                        |
-| HTTP Client   | `shared/services/api.ts` — custom fetch wrapper |
-| ORM           | Prisma                                        |
-| Database      | Prisma Postgres (via Prisma Accelerate)       |
-| File Storage  | Vercel Blob (QR code image)                   |
-| Slack         | Incoming Webhook + `chat.postMessage`         |
-| Scheduling    | Vercel Cron Jobs                              |
-| Package Manager | pnpm                                        |
+| Concern         | Technology                                      |
+| --------------- | ----------------------------------------------- |
+| Framework       | Next.js 16 / App Router                         |
+| Language        | TypeScript 5.x                                  |
+| Styling         | Tailwind CSS v4                                 |
+| UI Components   | shadcn/ui                                       |
+| Server State    | TanStack Query v5                               |
+| Client State    | Zustand                                         |
+| Validation      | Zod v4                                          |
+| Forms           | React Hook Form v7 + @hookform/resolvers v5     |
+| Notifications   | Sonner                                          |
+| HTTP Client     | `shared/services/api.ts` — custom fetch wrapper |
+| ORM             | Prisma                                          |
+| Database        | Prisma Postgres (via Prisma Accelerate)         |
+| File Storage    | Vercel Blob (QR code image)                     |
+| Slack           | Incoming Webhook + `chat.postMessage`           |
+| Scheduling      | Vercel Cron Jobs                                |
+| Package Manager | pnpm                                            |
 
 ---
 
@@ -59,7 +59,8 @@ Read in this order for full context:
 3. **`docs/domains/<domain>.md`** — Shared domain knowledge (read the domain relevant to your task)
    - `docs/domains/employee.md` — Employee entity, role constants, identity (no auth)
    - `docs/domains/menu.md` — MenuOfDay, MenuOfDayItem, lifecycle, timezone helpers, batch editing pattern
-   - `docs/domains/order.md` — Order, auto order, payment flow, cron
+   - `docs/domains/order.md` — Order, auto order, cron
+   - `docs/domains/ledger.md` — LedgerEntry, balance computation, fund overview, top-up and debit rules
 4. **`docs/features/F<N>-<feature>.md`** — Feature-specific detail: screens, API contracts, business rules
 
 ---
@@ -78,7 +79,7 @@ src/
 │   │   ├── menu/page.tsx       → F3: Menu management
 │   │   ├── settings/page.tsx   → F4: App settings
 │   │   ├── employees/page.tsx  → F5: Employee management
-│   │   └── report/page.tsx     → F6: Monthly report
+│   │   └── finance/page.tsx    → F6: Finance management
 │   └── api/                    → All API route handlers
 │
 ├── features/                   → See "Feature Structure" below
@@ -208,12 +209,16 @@ app/ → features/ → domains/ → shared/
 **Project-specific:**
 
 - ❌ Use raw `new Date()` for date boundary logic — use `getTodayUTC()` from `src/domains/menu/lib/date.ts`
-- ❌ Hard-delete employees or menu items — always soft delete (`isActive = false`) for employees
+- ❌ Hard-delete employees — always soft delete (`isActive = false`)
 - ❌ Insert `AppConfig` — always upsert with `where: { id: "singleton" }`
 - ❌ Use `Promise.all` for fan-out Slack DMs — use `Promise.allSettled` so one failure doesn't block others
 - ❌ Reference `MenuItem` — that entity does not exist in this project; dish names are stored directly on `MenuOfDayItem.name`
-- ❌ Create a separate DB table for external dishes — they are a `Json` column on `MenuOfDay`; no Order, no isPaid, no quantity tracking for external dishes
+- ❌ Create a separate DB table for external dishes — they are a `Json` column on `MenuOfDay`; no Order, no quantity tracking for external dishes
 - ❌ Block publish when only external dishes exist and no standard items — a menu with only external dishes is valid
+- ❌ Add `isPaid` or `paidAt` to `Order` — payment state no longer lives on orders; use the ledger system
+- ❌ Update employee balance directly — always write a `LedgerEntry`; balance is always computed as `SUM(ledgerEntries.amount)`
+- ❌ Create or cancel an order without a matching `LedgerEntry` in the same DB transaction — order mutations and their ledger debits are always atomic
+- ❌ Edit an existing `LedgerEntry` — entries are immutable; corrections are new `adjustment` entries
 
 ---
 
@@ -266,13 +271,13 @@ app/ → features/ → domains/ → shared/
 
 **File naming by folder:**
 
-| Folder      | Pattern                      | Example                                          |
-| ----------- | ---------------------------- | ------------------------------------------------ |
-| `services/` | `[resource].service.ts`      | `order.service.ts`, `menu.service.ts`            |
-| `types/`    | `[resource].type.ts`         | `order.type.ts`, `menu.type.ts`                  |
-| `hooks/`    | `use-[action]-[resource].ts` | `use-today-orders.ts`, `use-publish-menu.ts`     |
-| `components/` | `[feature]-[role].tsx`     | `order-list.tsx`, `menu-table-row.tsx`           |
-| `stores/`   | `[resource].store.ts`        | `home.store.ts`, `menu-draft.store.ts`           |
+| Folder        | Pattern                      | Example                                      |
+| ------------- | ---------------------------- | -------------------------------------------- |
+| `services/`   | `[resource].service.ts`      | `order.service.ts`, `menu.service.ts`        |
+| `types/`      | `[resource].type.ts`         | `order.type.ts`, `ledger.type.ts`            |
+| `hooks/`      | `use-[action]-[resource].ts` | `use-today-orders.ts`, `use-publish-menu.ts` |
+| `components/` | `[feature]-[role].tsx`       | `order-list.tsx`, `menu-table-row.tsx`       |
+| `stores/`     | `[resource].store.ts`        | `home.store.ts`, `menu-draft.store.ts`       |
 
 **Schemas vs Types:**
 
@@ -350,14 +355,15 @@ Two APIs are prefetched proactively to eliminate first-load spinners on the most
 
 All other APIs are fetched lazily when their page/component mounts — do not prefetch them:
 - `/api/orders/today` — admin only, changes frequently, 30s polling handles freshness
-- `/api/orders/unpaid` — requires `employeeId` which may not be known at layout time
+- `/api/finance/balance` — requires `employeeId` which may not be known at layout time
 - `/api/menu/suggestions` — admin only, only needed in F3
-- `/api/report/monthly` — heavy query, only needed in F6
-- `/api/config` — rarely changes, only needed in payment tab and F4
+- `/api/finance/summary` — admin only, only needed in F6
+- `/api/config` — rarely changes, only needed in Finance tab and F4
 
 **Prefetch on hover** — admin nav links prefetch their primary data source when hovered:
 - Hover "Tổng quan" (`/admin`) → `queryClient.prefetchQuery(queryKeys.orders.today())`
 - Hover "Thực đơn hôm nay" (`/admin/menu`) → `queryClient.prefetchQuery(queryKeys.menu.suggestions())`
+- Hover "Tài chính" (`/admin/finance`) → `queryClient.prefetchQuery(queryKeys.finance.summary())`
 
 Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClient.prefetchQuery(...)`. The ~200–300ms between hover and click is usually enough for the cache to populate.
 
@@ -393,10 +399,13 @@ Implementation: attach `onMouseEnter` on each nav `<Link>` that calls `queryClie
 - Timezone: always use `getTodayUTC()` from `src/domains/menu/lib/date.ts` for date boundaries
 - There is **no `MenuItem` model** — do not create or reference one
 - `MenuOfDay.externalDishes` is a `Json` column storing `ExternalDishItem[]` — always cast with `as ExternalDishItem[]` when reading; never create a separate DB table for external dishes
+- **Ledger atomicity:** order create/edit/cancel must always update `LedgerEntry` in the same `prisma.$transaction` — never one without the other
+- **Balance computation:** always compute as `prisma.ledgerEntry.aggregate({ where: { employeeId }, _sum: { amount: true } })` — never store or cache balance as a field on `Employee`
 
 ### Price & Date Formatting
 
 - **Prices:** display as `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`) — store as integer VND
+- **Signed amounts in ledger:** prefix `+` for positive (top-up), `-` for negative (debit) in UI display
 - **Dates:** display as `dd/MM/yyyy` (e.g. `04/04/2026`)
 - **Time:** display as `HH:mm` (e.g. `13:30`)
 
@@ -423,29 +432,30 @@ model AppConfig {
 }
 
 model Employee {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  slackId   String?
-  role      String   @default("member")  // "admin" | "member"
-  autoOrder Boolean  @default(false)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  orders    Order[]
+  id            String        @id @default(cuid())
+  name          String
+  email         String?
+  slackId       String?
+  role          String        @default("member")  // "admin" | "member"
+  autoOrder     Boolean       @default(false)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  orders        Order[]
+  ledgerEntries LedgerEntry[]
 
   @@map("employees")
 }
 
 model MenuOfDay {
-  id              String          @id @default(cuid())
-  date            DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
-  isPublished     Boolean         @default(false)
-  isLocked        Boolean         @default(false)
-  externalDishes  Json            @default("[]")  // ExternalDishItem[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  items           MenuOfDayItem[]
-  orders          Order[]
+  id             String          @id @default(cuid())
+  date           DateTime        @unique  // 00:00:00 UTC representing the day in Asia/Ho_Chi_Minh
+  isPublished    Boolean         @default(false)
+  isLocked       Boolean         @default(false)
+  externalDishes Json            @default("[]")  // ExternalDishItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  items          MenuOfDayItem[]
+  orders         Order[]
 
   @@map("menu_of_days")
 }
@@ -464,21 +474,36 @@ model MenuOfDayItem {
 }
 
 model Order {
-  id                String        @id @default(cuid())
-  menuOfDayId       String
-  menuOfDay         MenuOfDay     @relation(fields: [menuOfDayId], references: [id])
-  employeeId        String
-  employee          Employee      @relation(fields: [employeeId], references: [id])
-  menuOfDayItemId   String
-  menuOfDayItem     MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
-  quantity          Int           @default(1)
-  isAutoOrder       Boolean       @default(false)
-  isPaid            Boolean       @default(false)
-  paidAt            DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  menuOfDayId     String
+  menuOfDay       MenuOfDay     @relation(fields: [menuOfDayId], references: [id])
+  employeeId      String
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  menuOfDayItemId String
+  menuOfDayItem   MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
+  quantity        Int           @default(1)
+  isAutoOrder     Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // No unique(menuOfDayId, employeeId) — one employee can have multiple orders per day
+  // No isPaid / paidAt — payment state is tracked via LedgerEntry
 
   @@map("orders")
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  amount     Int      // VND, signed: positive = top-up, negative = order debit or adjustment
+  type       String   // "topup" | "order_debit" | "adjustment"
+  note       String?  // for order_debit: date string e.g. "04/04/2026"; for adjustment: reason
+  orderId    String?  // set only for order_debit; NOT a FK — order may be hard-deleted on cancel
+  createdAt  DateTime @default(now())
+  createdBy  String?  // employeeId of initiator; null = system-generated
+
+  @@map("ledger_entries")
 }
 ```
 
@@ -503,15 +528,15 @@ Format: `<type>(<scope>): <description>`
 
 ## Feature Map (Quick Reference)
 
-| #  | Feature              | Route                | Domain            | Status  |
-| -- | -------------------- | -------------------- | ----------------- | ------- |
-| F1 | Home                 | `/`                  | employee, order   | Planned |
-| F2 | Admin Dashboard      | `/admin`             | order, menu       | Planned |
-| F3 | Menu Management      | `/admin/menu`        | menu, order       | Planned |
-| F4 | App Settings         | `/admin/settings`    | —                 | Planned |
-| F5 | Employee Management  | `/admin/employees`   | employee          | Planned |
-| F6 | Monthly Report       | `/admin/report`      | order, employee   | Planned |
-| F7 | Slack Notifications  | events + cron        | order, menu       | Planned |
+| #  | Feature              | Route                | Domain                  | Status  |
+| -- | -------------------- | -------------------- | ----------------------- | ------- |
+| F1 | Home                 | `/`                  | employee, order, ledger | Planned |
+| F2 | Admin Dashboard      | `/admin`             | order, menu, ledger     | Planned |
+| F3 | Menu Management      | `/admin/menu`        | menu, order             | Planned |
+| F4 | App Settings         | `/admin/settings`    | —                       | Planned |
+| F5 | Employee Management  | `/admin/employees`   | employee                | Planned |
+| F6 | Finance Management   | `/admin/finance`     | ledger, employee        | Planned |
+| F7 | Slack Notifications  | events + cron        | order, menu, ledger     | Planned |
 
 Note: F8 (MenuItem Management) has been removed — there is no dish catalog.
 
@@ -549,3 +574,5 @@ Note: F8 (MenuItem Management) has been removed — there is no dish catalog.
 - **Timezone bug:** always trace back to `getTodayUTC()` — never trust raw `new Date()`
 - **Slack not sending:** check `slackId` is set, log error but do not fail the parent operation
 - **Tempted to call API per edit:** don't — buffer in store, batch on save
+- **Balance wrong:** trace back to `LedgerEntry` records — balance is always a live SUM, never a stored field
+- **Order mutation missing ledger debit:** every order create/edit/cancel must wrap order + ledger in `prisma.$transaction`

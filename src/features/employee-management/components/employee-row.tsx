@@ -28,14 +28,14 @@ export function EmployeeRow({ employee, onEdit }: EmployeeRowProps) {
   return (
     <>
       <tr className={cn('border-border hover:bg-muted/50 border-b transition-colors', isInactive && 'opacity-50')}>
-        <td className="text-foreground px-4 py-3 text-sm font-medium">{employee.name}</td>
-        <td className="text-muted-foreground px-4 py-3 text-sm">{employee.email ?? '—'}</td>
-        <td className="text-muted-foreground px-4 py-3 text-sm">{employee.slackId ?? '—'}</td>
-        <td className="text-muted-foreground px-4 py-3 text-sm">
+        <td className="text-foreground whitespace-nowrap px-4 py-3 text-sm font-medium">{employee.name}</td>
+        <td className="text-muted-foreground max-w-48 truncate px-4 py-3 text-sm">{employee.email ?? '—'}</td>
+        <td className="text-muted-foreground whitespace-nowrap px-4 py-3 text-sm">{employee.slackId ?? '—'}</td>
+        <td className="text-muted-foreground whitespace-nowrap px-4 py-3 text-sm">
           {employee.role === EMPLOYEE_ROLE.ADMIN ? 'Admin' : 'Thành viên'}
         </td>
         <td className="text-muted-foreground px-4 py-3 text-center text-sm">{employee.autoOrder ? '✓' : '—'}</td>
-        <td className="px-4 py-3 text-sm">
+        <td className="whitespace-nowrap px-4 py-3 text-sm">
           <span
             className={cn(
               'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
@@ -45,7 +45,7 @@ export function EmployeeRow({ employee, onEdit }: EmployeeRowProps) {
             {employee.isActive ? 'Hoạt động' : 'Không hoạt động'}
           </span>
         </td>
-        <td className="px-4 py-3 text-right">
+        <td className="whitespace-nowrap px-4 py-3 text-right">
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onEdit}>
               Sửa

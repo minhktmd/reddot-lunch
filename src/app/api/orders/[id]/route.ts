@@ -1,8 +1,12 @@
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { logger } from '@/shared/lib/logger';
 import { prisma } from '@/shared/lib/prisma';
+
+const formatDateVN = (d: Date) => format(toZonedTime(d, 'Asia/Ho_Chi_Minh'), 'dd/MM/yyyy');
 
 const updateOrderSchema = z.object({
   menuOfDayItemId: z.string().min(1).optional(),
@@ -32,6 +36,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ message: 'Không thể sửa đơn lúc này' }, { status: 403 });
     }
 
+    const newMenuOfDayItemId = result.data.menuOfDayItemId ?? order.menuOfDayItemId;
+    const newQuantity = result.data.quantity ?? order.quantity;
+
     if (result.data.menuOfDayItemId) {
       const newItem = await prisma.menuOfDayItem.findUnique({ where: { id: result.data.menuOfDayItemId } });
       if (!newItem || newItem.menuOfDayId !== order.menuOfDayId) {
@@ -39,18 +46,32 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: result.data,
-      include: { menuOfDayItem: true },
+    const newItem = await prisma.menuOfDayItem.findUnique({ where: { id: newMenuOfDayItemId } });
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedOrder = await tx.order.update({
+        where: { id },
+        data: { menuOfDayItemId: newMenuOfDayItemId, quantity: newQuantity },
+        include: { menuOfDayItem: true },
+      });
+      await tx.ledgerEntry.deleteMany({ where: { orderId: id } });
+      await tx.ledgerEntry.create({
+        data: {
+          employeeId: order.employeeId,
+          amount: -(newItem!.price * newQuantity),
+          type: 'order_debit',
+          orderId: id,
+          note: formatDateVN(order.menuOfDay.date),
+          createdBy: null,
+        },
+      });
+      return updatedOrder;
     });
 
     return NextResponse.json({
       id: updated.id,
       quantity: updated.quantity,
       isAutoOrder: updated.isAutoOrder,
-      isPaid: updated.isPaid,
-      paidAt: updated.paidAt?.toISOString() ?? null,
       menuOfDayItem: {
         id: updated.menuOfDayItem.id,
         name: updated.menuOfDayItem.name,
@@ -81,7 +102,10 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
       return NextResponse.json({ message: 'Không thể hủy đơn lúc này' }, { status: 403 });
     }
 
-    await prisma.order.delete({ where: { id } });
+    await prisma.$transaction([
+      prisma.order.delete({ where: { id } }),
+      prisma.ledgerEntry.deleteMany({ where: { orderId: id } }),
+    ]);
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

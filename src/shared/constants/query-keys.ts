@@ -18,11 +18,12 @@ export const queryKeys = {
   orders: {
     today: ['orders', 'today'] as const,
     byEmployee: (employeeId: string, date: string) => ['orders', 'employee', employeeId, date] as const,
-    unpaid: (employeeId: string) => ['orders', 'unpaid', employeeId] as const,
   },
-  report: {
-    monthly: (month: string) => ['report', 'monthly', month] as const,
-    employee: (employeeId: string, month: string) => ['report', 'employee', employeeId, month] as const,
+  finance: {
+    balance: (employeeId: string) => ['finance', 'balance', employeeId] as const,
+    ledger: (employeeId: string) => ['finance', 'ledger', employeeId] as const,
+    summary: () => ['finance', 'summary'] as const,
+    fundLedger: (month: string) => ['finance', 'fund-ledger', month] as const,
   },
   appConfig: ['app-config'] as const,
 } as const;

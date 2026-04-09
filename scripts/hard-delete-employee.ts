@@ -6,10 +6,11 @@
  *   pnpm tsx scripts/hard-delete-employee.ts <employeeId> --dry-run
  *
  * What gets deleted (in order):
- *   1. Order[]           — all orders placed by this employee
- *   2. Employee          — the employee record itself
+ *   1. LedgerEntry[]     — all ledger entries for this employee
+ *   2. Order[]           — all orders placed by this employee
+ *   3. Employee          — the employee record itself
  *
- * MenuOfDay / MenuOfDayItem / MenuItem are NOT touched —
+ * MenuOfDay / MenuOfDayItem are NOT touched —
  * they belong to the menu, not the employee.
  */
 
@@ -19,7 +20,7 @@ async function hardDeleteEmployee(employeeId: string, dryRun: boolean) {
   // 1. Verify employee exists
   const employee = await db.employee.findUnique({
     where: { id: employeeId },
-    include: { _count: { select: { orders: true } } },
+    include: { _count: { select: { orders: true, ledgerEntries: true } } },
   });
 
   if (!employee) {
@@ -28,11 +29,12 @@ async function hardDeleteEmployee(employeeId: string, dryRun: boolean) {
   }
 
   console.log(`\nEmployee found:`);
-  console.log(`  Name:   ${employee.name}`);
-  console.log(`  Email:  ${employee.email ?? '—'}`);
-  console.log(`  Active: ${employee.isActive}`);
-  console.log(`  Orders: ${employee._count.orders}`);
-  console.log(`  Mode:   ${dryRun ? 'DRY RUN (no changes)' : '⚠️  LIVE DELETE'}`);
+  console.log(`  Name:           ${employee.name}`);
+  console.log(`  Email:          ${employee.email ?? '—'}`);
+  console.log(`  Active:         ${employee.isActive}`);
+  console.log(`  Orders:         ${employee._count.orders}`);
+  console.log(`  Ledger entries: ${employee._count.ledgerEntries}`);
+  console.log(`  Mode:           ${dryRun ? 'DRY RUN (no changes)' : '⚠️  LIVE DELETE'}`);
 
   if (dryRun) {
     console.log('\n✅ Dry run complete. Nothing was changed.');
@@ -41,6 +43,7 @@ async function hardDeleteEmployee(employeeId: string, dryRun: boolean) {
 
   // 2. Confirm
   console.log('\nThis will permanently delete:');
+  console.log(`  - ${employee._count.ledgerEntries} ledger entry/entries`);
   console.log(`  - ${employee._count.orders} order(s)`);
   console.log(`  - The employee record`);
   console.log('\nProceeding in 3 seconds... (Ctrl+C to abort)');
@@ -48,6 +51,10 @@ async function hardDeleteEmployee(employeeId: string, dryRun: boolean) {
 
   // 3. Delete inside a transaction
   const result = await db.$transaction(async (tx) => {
+    const deletedEntries = await tx.ledgerEntry.deleteMany({
+      where: { employeeId },
+    });
+
     const deletedOrders = await tx.order.deleteMany({
       where: { employeeId },
     });
@@ -56,10 +63,12 @@ async function hardDeleteEmployee(employeeId: string, dryRun: boolean) {
       where: { id: employeeId },
     });
 
-    return { orders: deletedOrders.count };
+    return { entries: deletedEntries.count, orders: deletedOrders.count };
   });
 
-  console.log(`\n✅ Done. Deleted ${result.orders} order(s) and employee "${employee.name}".`);
+  console.log(
+    `\n✅ Done. Deleted ${result.entries} ledger entry/entries, ${result.orders} order(s), and employee "${employee.name}".`
+  );
 }
 
 // --- Entry point ---

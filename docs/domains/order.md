@@ -1,6 +1,7 @@
 # Domain: Order
 
-> Schema, business rules, and helpers for Order and payment logic.
+> Schema, business rules, and helpers for Order logic.
+> Payment / balance logic → `docs/domains/ledger.md`.
 > Big picture → `docs/OVERVIEW.md`. Auto order trigger → tied to menu publish in `docs/domains/menu.md`.
 > Feature detail → `src/features/home/SPEC.md`, `src/features/admin-dashboard/SPEC.md`.
 
@@ -19,8 +20,6 @@ model Order {
   menuOfDayItem   MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
   quantity        Int           @default(1)
   isAutoOrder     Boolean       @default(false)
-  isPaid          Boolean       @default(false)
-  paidAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -36,8 +35,8 @@ model Order {
 |---|---|
 | `quantity` | `>= 1`, no upper limit |
 | `isAutoOrder` | `true` = created automatically on menu publish; behaves like any normal order after creation |
-| `isPaid` | Payment state — toggled by employee via "Confirm Payment", or undone by admin |
-| `paidAt` | Set to `now()` when paid, `null` when unpaid or undone |
+
+Note: There is **no `isPaid` / `paidAt`** on `Order`. Payment state is replaced by the ledger system — see `docs/domains/ledger.md`.
 
 ---
 
@@ -48,6 +47,7 @@ model Order {
 - Orders can only be created when `MenuOfDay.isPublished = true` AND `MenuOfDay.isLocked = false`
 - One employee can place multiple orders on the same day (different `menuOfDayItemId`)
 - `menuOfDayId` must match the `menuOfDayItem.menuOfDayId` — cannot mix items from different days
+- Creating an order does **not** directly write a `LedgerEntry` to the DB — balance is computed client-side for display. The ledger records orders via `orderId` reference at the time of display/query.
 
 ### Editing an order
 
@@ -58,6 +58,7 @@ model Order {
 
 - Only allowed while `MenuOfDay.isLocked = false`
 - Hard delete — the `Order` record is removed from the database
+- No ledger reversal needed on cancel: the ledger debit for this order (if any was recorded) is computed from live `Order` records, not stored as a separate row — see Ledger domain for details
 
 ### Guard (applied in all order mutation API routes)
 
@@ -124,58 +125,10 @@ Once created, an auto order behaves like any normal order — employee can edit 
 
 ---
 
-## Payment Flow
-
-No payment processing. Bank transfer via QR code only.
-
-### Employee pays
-
-1. Employee opens "Payment" tab on `/`
-2. Sees table of all orders where `isPaid = false` across entire history
-3. Sees total outstanding amount + QR code image from `AppConfig.qrCodeUrl`
-4. Transfers money via bank → clicks "Confirm Payment"
-5. `PATCH /api/orders/pay` — sets `isPaid = true`, `paidAt = now()` for **all** unpaid orders of that employee
-
-```ts
-// PATCH /api/orders/pay body
-type PayAllInput = {
-  employeeId: string
-}
-
-// DB operation
-await prisma.order.updateMany({
-  where: { employeeId, isPaid: false },
-  data: { isPaid: true, paidAt: new Date() },
-})
-```
-
-### Admin undoes payment
-
-Admin can undo payment for a specific employee on a specific date (e.g. to correct a mistake).
-
-```ts
-// PATCH /api/orders/unpay body
-type UnpayInput = {
-  employeeId: string
-  date: string  // YYYY-MM-DD
-}
-
-// DB operation
-await prisma.order.updateMany({
-  where: {
-    employeeId,
-    menuOfDay: { date: parseDateParam(date) },
-    isPaid: true,
-  },
-  data: { isPaid: false, paidAt: null },
-})
-```
-
----
-
-## Slack — Payment Reminder (Cron)
+## Slack — Balance Reminder (Cron)
 
 Runs daily at 13:00 via Vercel Cron. Only fires if a published menu exists for today.
+Reminder targets employees whose **computed balance** (top-ups minus order costs) is negative.
 
 ### Logic
 
@@ -186,18 +139,24 @@ const menu = await prisma.menuOfDay.findFirst({
 })
 if (!menu) return  // no menu today — skip
 
-// 2. Count employees with unpaid orders today
-const unpaidEmployeeIds = await prisma.order.findMany({
-  where: { menuOfDayId: menu.id, isPaid: false },
-  select: { employeeId: true },
-  distinct: ["employeeId"],
+// 2. Find employees with negative balance
+// Balance = SUM of LedgerEntry.amount for each employee
+// (top-ups are positive, order costs are negative)
+const employees = await prisma.employee.findMany({
+  where: { isActive: true },
+  include: { ledgerEntries: true },
 })
-const count = unpaidEmployeeIds.length
-if (count === 0) return  // everyone paid — skip
+
+const inDebt = employees.filter(e => {
+  const balance = e.ledgerEntries.reduce((sum, entry) => sum + entry.amount, 0)
+  return balance < 0
+})
+
+if (inDebt.length === 0) return  // everyone has positive balance — skip
 
 // 3. Post to channel
 await postChannel(
-  `💰 ${count} người chưa trả tiền cơm hôm nay. Trả tại: ${appUrl}`
+  `💰 ${inDebt.length} người đang có số dư âm. Vào đây để nạp tiền: ${appUrl}`
 )
 ```
 
@@ -219,7 +178,6 @@ await postChannel(
 ### Cron route security
 
 ```ts
-// /api/cron/remind-payment/route.ts
 const auth = request.headers.get("Authorization")
 if (auth !== `Bearer ${env.CRON_SECRET}`) {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -237,29 +195,11 @@ type OrderItem = {
   id: string
   quantity: number
   isAutoOrder: boolean
-  isPaid: boolean
-  paidAt: string | null
   menuOfDayItem: {
     id: string
+    name: string
     price: number
     sideDishes: string | null
-    menuItem: { id: string; name: string }
-  }
-}
-```
-
-### GET /api/orders/unpaid?employeeId=
-
-```ts
-type UnpaidOrderItem = {
-  id: string
-  quantity: number
-  isPaid: false
-  menuOfDay: { id: string; date: string }
-  menuOfDayItem: {
-    id: string
-    price: number
-    menuItem: { id: string; name: string }
   }
 }
 ```
@@ -271,13 +211,11 @@ type TodayOrderItem = {
   id: string
   quantity: number
   isAutoOrder: boolean
-  isPaid: boolean
-  paidAt: string | null
   employee: { id: string; name: string }
   menuOfDayItem: {
     id: string
+    name: string
     price: number
-    menuItem: { id: string; name: string }
   }
 }
 ```

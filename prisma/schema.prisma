@@ -16,7 +16,8 @@ model Employee {
   autoOrder Boolean  @default(false)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
-  orders    Order[]
+  orders        Order[]
+  ledgerEntries LedgerEntry[]
 
   @@map("employees")
 }
@@ -58,14 +59,27 @@ model Order {
   menuOfDayItem   MenuOfDayItem @relation(fields: [menuOfDayItemId], references: [id])
   quantity        Int           @default(1)
   isAutoOrder     Boolean       @default(false)
-  isPaid          Boolean       @default(false)
-  paidAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   // No unique(menuOfDayId, employeeId) — one employee can have multiple orders per day
+  // No isPaid / paidAt — payment state tracked via LedgerEntry
 
   @@map("orders")
+}
+
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  amount     Int      // VND, signed: positive = top-up, negative = order debit or adjustment
+  type       String   // "topup" | "order_debit" | "adjustment"
+  note       String?  // for order_debit: date string e.g. "04/04/2026"; for adjustment: reason
+  orderId    String?  // set only for order_debit; NOT a FK — order may be hard-deleted on cancel
+  createdAt  DateTime @default(now())
+  createdBy  String?  // employeeId of initiator; null = system-generated
+
+  @@map("ledger_entries")
 }
 
 model AppConfig {

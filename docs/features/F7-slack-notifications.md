@@ -1,7 +1,7 @@
 # SPEC: Slack Notifications (F7)
 
 > Event-driven and scheduled Slack messages.
-> Domain knowledge → `docs/domains/order.md`, `docs/domains/menu.md`, `docs/domains/employee.md`.
+> Domain knowledge → `docs/domains/order.md`, `docs/domains/menu.md`, `docs/domains/employee.md`, `docs/domains/ledger.md`.
 > No UI — this feature is purely server-side logic.
 
 ---
@@ -17,7 +17,7 @@ Five types of Slack messages, all channel posts except auto order DMs:
 | 3 | Menu items updated | Admin saves post-publish item changes (only when DB actually changed) | Channel |
 | 4 | External dishes updated | Admin adds/removes external dishes post-publish (only when list non-empty after change) | Channel |
 | 5 | Menu locked | Admin clicks "Chốt sổ" | Channel |
-| 6 | Payment reminder | Vercel Cron at 13:00 weekdays | Channel |
+| 6 | Balance reminder | Vercel Cron at 13:00 weekdays | Channel |
 
 All Slack logic lives in `shared/lib/slack.ts`. This feature wires up the helpers into the publish, save-items, save-external-dishes, lock, and cron flows.
 
@@ -65,17 +65,17 @@ Only sent if `employee.slackId` is set and non-empty.
 
 ---
 
-### 3. Payment Reminder — Channel Post
+### 3. Balance Reminder — Channel Post
 
 Sent to the Slack channel via Incoming Webhook at 13:00 every weekday.
 
 ```
-💰 {count} người chưa trả tiền cơm hôm nay. Trả tại: {NEXT_PUBLIC_APP_URL}
+💰 {count} người đang có số dư âm. Vào đây để nạp tiền: {NEXT_PUBLIC_APP_URL}
 ```
 
 Only sent when:
 - A published menu exists for today
-- At least one employee has unpaid orders for today (`count > 0`)
+- At least one active employee has a negative balance (`count > 0`)
 
 ---
 
@@ -262,22 +262,24 @@ const menu = await prisma.menuOfDay.findFirst({
 })
 if (!menu) return NextResponse.json({ ok: true, skipped: "no menu today" })
 
-// 3. Count employees with unpaid orders today
-const unpaidEmployees = await prisma.order.findMany({
-  where: { menuOfDayId: menu.id, isPaid: false },
-  select: { employeeId: true },
-  distinct: ["employeeId"],
+// 3. Find active employees with negative balance
+// Balance = SUM(ledgerEntries.amount) per employee
+const grouped = await prisma.ledgerEntry.groupBy({
+  by: ["employeeId"],
+  _sum: { amount: true },
 })
-if (unpaidEmployees.length === 0) {
-  return NextResponse.json({ ok: true, skipped: "everyone paid" })
+
+const inDebtCount = grouped.filter(g => (g._sum.amount ?? 0) < 0).length
+if (inDebtCount === 0) {
+  return NextResponse.json({ ok: true, skipped: "no one in debt" })
 }
 
 // 4. Post reminder
 await postChannel(
-  `💰 ${unpaidEmployees.length} người chưa trả tiền cơm hôm nay. Trả tại: ${env.NEXT_PUBLIC_APP_URL}`
+  `💰 ${inDebtCount} người đang có số dư âm. Vào đây để nạp tiền: ${env.NEXT_PUBLIC_APP_URL}`
 )
 
-return NextResponse.json({ ok: true, reminded: unpaidEmployees.length })
+return NextResponse.json({ ok: true, reminded: inDebtCount })
 ```
 
 ### Vercel Cron Config (`vercel.json`)
@@ -358,6 +360,11 @@ export function buildMenuLockedMessage(): string {
   return `🔒 Admin đã chốt danh sách đặt cơm hôm nay. Đơn đã được gửi đi rồi!\nNếu bạn chưa đặt, vui lòng tự lo bữa trưa nhé! 🍜`
 }
 
+// build-balance-reminder-message.ts
+export function buildBalanceReminderMessage(count: number, appUrl: string): string {
+  return `💰 ${count} người đang có số dư âm. Vào đây để nạp tiền: ${appUrl}`
+}
+
 // did-items-change.ts — helper used in PATCH /api/menu/[id]/items
 export function didItemsChange(
   before: { name: string; price: number; sideDishes: string | null }[],
@@ -385,9 +392,9 @@ export function didItemsChange(
 - [ ] US6: Channel receives an external dishes notification when admin adds/removes an external dish post-publish and the resulting list is non-empty
 - [ ] US7: No external dishes notification is sent when admin removes the last external dish (list becomes empty)
 - [ ] US8: Channel receives a locked notification when admin clicks "Chốt sổ"
-- [ ] US9: Channel receives payment reminder at 13:00 on weekdays when unpaid orders exist
+- [ ] US9: Channel receives balance reminder at 13:00 on weekdays when employees with negative balance exist
 - [ ] US10: No reminder is sent if today has no published menu
-- [ ] US11: No reminder is sent if all orders are paid
+- [ ] US11: No reminder is sent if all employees have non-negative balance
 - [ ] US12: Slack failures in any of these flows do not cause the triggering operation to fail
 
 ---
@@ -410,3 +417,4 @@ CRON_SECRET="random-secret-string"
 - **Weekday format** — use `date-fns/locale/vi` for Vietnamese weekday names (Thứ Hai, Thứ Ba, etc.)
 - **`Promise.allSettled`** — always use for fan-out DM sending; one failed DM must not block others
 - **Cron only on weekdays** — `1-5` in cron expression covers Monday–Friday; no reminder on weekends
+- **Cron checks menu first** — if today has no published menu, skip the balance check entirely (no point reminding on days the office isn't ordering)

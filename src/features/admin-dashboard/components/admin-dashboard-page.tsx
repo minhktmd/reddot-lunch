@@ -7,12 +7,10 @@ import { useTodayMenu } from '../hooks/use-today-menu';
 import { useTodayOrders } from '../hooks/use-today-orders';
 import { useUnlockMenu } from '../hooks/use-unlock-menu';
 
+import { DashboardBalanceOverview } from './dashboard-balance-overview';
 import { DashboardKitchenSummary } from './dashboard-kitchen-summary';
 import { DashboardOrderSummary } from './dashboard-order-summary';
-import { DashboardPaymentStatus } from './dashboard-payment-status';
 import { DashboardStatusBar } from './dashboard-status-bar';
-
-import type { EmployeePayment } from '../types/admin-dashboard.type';
 
 export function AdminDashboardPage() {
   const { data: menuResponse, isLoading: isMenuLoading } = useTodayMenu();
@@ -44,36 +42,8 @@ export function AdminDashboardPage() {
 
   const menu = menuResponse.menu;
 
-  // Derived data — computed client-side from orders
-  const employeeOrderMap = todayOrders.reduce<
-    Record<string, { name: string; totalAmount: number; hasPaid: boolean; paidAt: string | null }>
-  >((acc, order) => {
-    const { id, name } = order.employee;
-    if (!acc[id]) {
-      acc[id] = { name, totalAmount: 0, hasPaid: false, paidAt: null };
-    }
-    acc[id].totalAmount += order.quantity * order.menuOfDayItem.price;
-    if (order.isPaid) {
-      acc[id].hasPaid = true;
-      if (!acc[id].paidAt && order.paidAt) acc[id].paidAt = order.paidAt;
-    }
-    return acc;
-  }, {});
-
-  const paidEmployees: EmployeePayment[] = [];
-  const unpaidEmployees: EmployeePayment[] = [];
-
-  for (const [employeeId, { name, totalAmount, hasPaid, paidAt }] of Object.entries(employeeOrderMap)) {
-    const entry: EmployeePayment = { employeeId, employeeName: name, totalAmount, paidAt };
-    if (hasPaid) {
-      paidEmployees.push(entry);
-    } else {
-      unpaidEmployees.push(entry);
-    }
-  }
-
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
       <DashboardStatusBar
         menu={menu}
         onLock={() => lock(menu.id)}
@@ -83,7 +53,7 @@ export function AdminDashboardPage() {
       />
       <DashboardKitchenSummary orders={todayOrders} />
       <DashboardOrderSummary orders={todayOrders} />
-      <DashboardPaymentStatus paidEmployees={paidEmployees} unpaidEmployees={unpaidEmployees} />
+      <DashboardBalanceOverview />
     </div>
   );
 }

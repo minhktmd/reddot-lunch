@@ -5,9 +5,10 @@
  *   pnpm db:reset-today
  *
  * Deletes (in order):
- *   1. Order[]         — all orders for today's menu
- *   2. MenuOfDayItem[] — all items in today's menu
- *   3. MenuOfDay       — today's menu record
+ *   1. LedgerEntry[]   — order debit entries for today's orders
+ *   2. Order[]         — all orders for today's menu
+ *   3. MenuOfDayItem[] — all items in today's menu
+ *   4. MenuOfDay       — today's menu record
  *
  * Safe to run multiple times (idempotent).
  */
@@ -35,6 +36,15 @@ async function resetToday() {
   console.log(`✅ Found menu: ${menu.id} (isPublished: ${menu.isPublished}, isLocked: ${menu.isLocked})`);
 
   const result = await db.$transaction(async (tx) => {
+    const todayOrders = await tx.order.findMany({
+      where: { menuOfDayId: menu.id },
+      select: { id: true },
+    });
+
+    const deletedEntries = await tx.ledgerEntry.deleteMany({
+      where: { orderId: { in: todayOrders.map((o) => o.id) } },
+    });
+
     const deletedOrders = await tx.order.deleteMany({
       where: { menuOfDayId: menu.id },
     });
@@ -47,9 +57,10 @@ async function resetToday() {
       where: { id: menu.id },
     });
 
-    return { orders: deletedOrders.count, items: deletedItems.count };
+    return { entries: deletedEntries.count, orders: deletedOrders.count, items: deletedItems.count };
   });
 
+  console.log(`🗑  Deleted ${result.entries} ledger entries`);
   console.log(`🗑  Deleted ${result.orders} orders`);
   console.log(`🗑  Deleted ${result.items} menu items`);
   console.log(`🗑  Deleted menu of day`);

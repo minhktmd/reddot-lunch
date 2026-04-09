@@ -45,7 +45,7 @@ export function HomePage() {
 
   return (
     <div className="bg-background min-h-screen">
-      <HomeHeader employeeName={employee?.name ?? ''} onChangeName={clearSelectedEmployee} />
+      <HomeHeader employeeId={selectedEmployeeId} employeeName={employee?.name ?? ''} onChangeName={clearSelectedEmployee} />
 
       <HomeTabs employeeId={selectedEmployeeId} />
 

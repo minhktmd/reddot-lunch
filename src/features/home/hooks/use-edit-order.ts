@@ -57,6 +57,7 @@ export function useEditOrder(employeeId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders.byEmployee(employeeId, date) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.finance.balance(employeeId) });
       toast.success('Đã cập nhật đơn');
     },
   });
