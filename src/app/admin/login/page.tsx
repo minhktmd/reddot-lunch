@@ -1,5 +1,11 @@
+import { Suspense } from 'react';
+
 import { AdminLoginPage } from '@/features/admin-login';
 
 export default function Page() {
-  return <AdminLoginPage />;
+  return (
+    <Suspense>
+      <AdminLoginPage />
+    </Suspense>
+  );
 }
