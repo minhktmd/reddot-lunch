@@ -19,15 +19,41 @@ export function OrderMenuCard({ item, isLocked, isLoading, onPlaceOrder }: Order
   const handleDecrement = () => setQuantity((q) => Math.max(1, q - 1));
   const handleIncrement = () => setQuantity((q) => q + 1);
 
+  const sideDishList = item.sideDishes
+    ? item.sideDishes
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : [];
+
   return (
     <div className="bg-card rounded-lg border p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-foreground font-medium">{item.name}</p>
-          {item.sideDishes && <p className="text-muted-foreground mt-0.5 text-sm">{item.sideDishes}</p>}
+        <span className="text-muted-foreground text-xs">Món chính</span>
+        <div className="flex shrink-0 items-center gap-2">
+          {item.orderCount > 0 && (
+            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">
+              {item.orderCount} người đã chọn
+            </span>
+          )}
+          <span className="font-semibold text-blue-600">{formatPrice(item.price)}</span>
         </div>
-        <span className="shrink-0 font-semibold text-blue-600">{formatPrice(item.price)}</span>
       </div>
+
+      <p className="text-foreground mt-1 text-lg font-bold">{item.name}</p>
+
+      {sideDishList.length > 0 && (
+        <div className="mt-3">
+          <span className="text-muted-foreground text-xs">Đồ ăn kèm</span>
+          <div className="mt-1 space-y-0.5">
+            {sideDishList.map((dish) => (
+              <p key={dish} className="text-muted-foreground text-sm">
+                ✔ {dish}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!isLocked && (
         <div className="mt-3 flex items-center gap-2">

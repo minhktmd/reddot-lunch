@@ -13,7 +13,11 @@ const getCachedTodayMenu = unstable_cache(
 
     const menu = await prisma.menuOfDay.findUnique({
       where: { date: today },
-      include: { items: true },
+      include: {
+        items: {
+          include: { _count: { select: { orders: true } } },
+        },
+      },
     });
 
     if (menu) {
@@ -29,6 +33,7 @@ const getCachedTodayMenu = unstable_cache(
             name: item.name,
             price: item.price,
             sideDishes: item.sideDishes,
+            orderCount: item._count.orders,
           })),
           externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? [],
         },

@@ -229,8 +229,31 @@ type MenuOfDayResponse = {
     name: string
     price: number
     sideDishes: string | null
+    orderCount: number   // number of Order rows referencing this item (not sum of quantity)
   }[]
 }
+```
+
+`orderCount` is computed server-side via Prisma's `_count`:
+
+```ts
+const menu = await prisma.menuOfDay.findUnique({
+  where: { date: getTodayUTC() },
+  include: {
+    items: {
+      include: { _count: { select: { orders: true } } }
+    }
+  }
+})
+
+// Map to response shape:
+items: menu.items.map(item => ({
+  id: item.id,
+  name: item.name,
+  price: item.price,
+  sideDishes: item.sideDishes,
+  orderCount: item._count.orders,
+}))
 ```
 
 Always cast `menu.externalDishes` from Prisma's `Json` type before including in the response:

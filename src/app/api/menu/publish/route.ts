@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
             })),
           },
         },
-        include: { items: true },
+        include: { items: { include: { _count: { select: { orders: true } } } } },
       });
 
       // Auto orders only when standard items exist
@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
         name: item.name,
         price: item.price,
         sideDishes: item.sideDishes,
+        orderCount: item._count.orders,
       })),
       externalDishes: (menu.externalDishes as ExternalDishItem[]) ?? [],
     });

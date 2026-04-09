@@ -67,11 +67,29 @@ Shown when `GET /api/menu/today` returns `null` or `isPublished = false`.
 
 #### State B — Menu published, not locked
 
-**Standard menu cards** — shown only when `items.length > 0`. Each card:
-- Dish name
-- Price (formatted: `45.000đ`)
-- Side dishes (if any)
-- "Đặt món" button
+**Standard menu cards** — shown only when `items.length > 0`. Each card layout:
+
+```
+┌─────────────────────────────────────────┐
+│ Món chính          [5 người đã chọn] 45.000đ │
+│ Cơm cá basa kho tộ                      │
+│                                         │
+│ Đồ ăn kèm                               │
+│ ✔ Trứng luộc  ✔ Dưa muối chua           │
+│ ✔ Canh mùng tơi giải nhiệt              │
+│ ✔ Hoa quả tráng miệng                   │
+│                                         │
+│            [Đặt món]                    │
+└─────────────────────────────────────────┘
+```
+
+Card content rules:
+- **"Món chính"** label (muted, small) sits above the dish name
+- **Dish name** — large, prominent text (e.g. "Cơm cá basa kho tộ")
+- **Price** — displayed top-right of the card, formatted as `45.000đ`, accented color
+- **"Đồ ăn kèm"** section — only shown when `sideDishes` is non-empty; label (muted, small) followed by each side dish on its own line prefixed with a checkmark `✔`; side dishes are split on comma (`,`) and trimmed
+- **Order count badge** — shown only when `orderCount > 0`; text: `"{n} người đã chọn"`, displayed as a small badge near the price; if `orderCount === 0` the badge is hidden entirely
+- **"Đặt món" button** — full-width at the bottom of the card
 
 Employee's existing orders for today shown below the menu cards:
 
@@ -131,8 +149,8 @@ Số tiền muốn nạp: [___________] đ
 ← nhập số tiền → QR hiện ra ngay bên dưới (debounced 400ms) →
 
 [QR code — 200×200px]
-Nội dung: RDL - Vu Ngoc Anh chuyen tien an trua
-1234567890 — MB Bank — VU NGOC ANH
+Nội dung: RDL - Hoang Do chuyen tien an trua
+1234567890 — MB Bank — HOANG DO
 
 [Xác nhận đã chuyển khoản]
 ```
@@ -272,3 +290,24 @@ All server state (menu, orders, employees, balance) managed by TanStack Query.
 - **Price formatting:** `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`)
 - **Date display:** `dd/MM/yyyy` format throughout
 - **Balance in tab label:** loading state shows `"Tài chính"` without amount until query resolves
+- **Side dishes display:** split `sideDishes` string on comma (`,`) and trim each segment; render as a list of lines each prefixed with `✔`; if `sideDishes` is null or empty string, the "Đồ ăn kèm" section is hidden entirely
+- **Order count:** sourced from `item.orderCount` in `MenuOfDayResponse`; only rendered when `orderCount > 0`; counts total quantity across all orders for that item (i.e. `SUM(Order.quantity)` grouped by `menuOfDayItemId`)
+
+---
+
+## UI Revision Notes
+
+### Rev 1 — Menu card redesign: main dish + side dishes separation + order count (2025-04)
+
+**Motivation:** The previous card mixed dish name and side dishes in one undifferentiated block, making it hard to distinguish what the main dish is. Users also requested social proof (how many colleagues picked this dish).
+
+**Changes to `order-menu-card.tsx`:**
+- Add a `"Món chính"` label (muted, `text-xs`) above the dish name
+- Dish name uses larger, bolder font
+- Add a `"Đồ ăn kèm"` section below the dish name (hidden if `sideDishes` is null/empty): split by comma, render each item on its own line with a leading `✔` icon
+- Add order count badge (e.g. `"5 người đã chọn"`) displayed near the price — hidden when `orderCount === 0`
+
+**Changes to `MenuOfDayResponse` (in `menu.md`):**
+- `items[].orderCount: number` field added — server computes it via `_count: { orders: true }` in Prisma query (counts number of Order rows, not sum of quantity)
+
+**No new API endpoints.** `GET /api/menu/today` returns the count inline with each item.

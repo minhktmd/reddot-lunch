@@ -56,7 +56,7 @@ export function OrderTab({ employeeId }: OrderTabProps) {
     <div className="space-y-4">
       {isLocked && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-          Admin đã chốt sổ. Không thể thay đổi đơn hàng.
+          Đơn cơm đã đi! Ai đặt muộn hơn vui lòng nhắn tin hoặc tag Ngọc Anh ạ
         </div>
       )}
 

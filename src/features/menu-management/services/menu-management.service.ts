@@ -19,6 +19,7 @@ const menuOfDayItemSchema = z.object({
   name: z.string(),
   price: z.number(),
   sideDishes: z.string().nullable(),
+  orderCount: z.number(),
 });
 
 const externalDishItemSchema = z.object({

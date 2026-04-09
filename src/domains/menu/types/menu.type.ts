@@ -8,6 +8,7 @@ export type MenuOfDayItemResponse = {
   name: string;
   price: number;
   sideDishes: string | null;
+  orderCount: number;
 };
 
 export type MenuOfDayResponse = {

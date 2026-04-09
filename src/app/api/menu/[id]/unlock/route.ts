@@ -24,7 +24,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     const updated = await prisma.menuOfDay.update({
       where: { id },
       data: { isLocked: false },
-      include: { items: true },
+      include: { items: { include: { _count: { select: { orders: true } } } } },
     });
 
     revalidateTag('menu-today', { expire: 0 });
@@ -40,6 +40,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         name: item.name,
         price: item.price,
         sideDishes: item.sideDishes,
+        orderCount: item._count.orders,
       })),
     });
   } catch (error) {

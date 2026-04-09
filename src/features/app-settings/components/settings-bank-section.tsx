@@ -4,8 +4,8 @@ import { useState } from 'react';
 
 import { Button } from '@/shared/components/atoms/button';
 
-import { useBankList } from '../hooks/use-bank-list';
 import { useAppConfig } from '../hooks/use-app-config';
+import { useBankList } from '../hooks/use-bank-list';
 
 import { SettingsBankForm } from './settings-bank-form';
 import { SettingsQRPreview } from './settings-qr-preview';
@@ -67,11 +67,13 @@ export function SettingsBankSection() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold">Tài khoản nhận tiền</h2>
-      <div className="rounded-lg border p-4 space-y-4">
+      <div className="space-y-4 rounded-lg border p-4">
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Ngân hàng:</span>
-            <span className="font-medium">{selectedBank ? `${selectedBank.shortName} — ${selectedBank.name}` : config!.bankCode}</span>
+            <span className="font-medium">
+              {selectedBank ? `${selectedBank.shortName} — ${selectedBank.name}` : config!.bankCode}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Số tài khoản:</span>

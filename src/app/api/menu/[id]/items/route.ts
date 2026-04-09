@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
       return tx.menuOfDay.findUnique({
         where: { id },
-        include: { items: true },
+        include: { items: { include: { _count: { select: { orders: true } } } } },
       });
     });
 
@@ -122,6 +122,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         name: item.name,
         price: item.price,
         sideDishes: item.sideDishes,
+        orderCount: item._count.orders,
       })),
     });
   } catch (error) {
