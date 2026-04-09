@@ -16,7 +16,6 @@ Browser
         ├── React components (client-side)
         └── API Route Handlers (server-side)
               ├── Prisma → Prisma Postgres (via Accelerate)
-              ├── Vercel Blob (QR code)
               └── Slack API
 ```
 
@@ -48,7 +47,7 @@ Business logic is never written inside route handlers. It lives in:
 | Route handler | `src/app/api/` | Parse request, validate input, call service, return response |
 | Feature service | `src/features/*/services/` | Business logic specific to one feature |
 | Domain service | `src/domains/*/services/` | Business logic shared across multiple features |
-| Shared lib | `src/shared/lib/` | External integrations: Prisma, Slack, Vercel Blob |
+| Shared lib | `src/shared/lib/` | External integrations: Prisma, Slack |
 
 ### Why not a separate backend?
 
@@ -203,27 +202,60 @@ If Slack is down or a DM fails, the publish operation still succeeds. Slack erro
 
 ---
 
-## Vercel Blob — QR Code
+## VietQR — Dynamic Payment QR Code
 
 ### Pattern
 
-One fixed path: `payment-qr`. Every upload overwrites this file via `addRandomSuffix: false`.
+QR codes for bank transfers are generated entirely client-side using the VietQR public image API. No file storage, no server involvement.
 
 ```ts
-// src/shared/lib/blob.ts
-export async function uploadQRCode(file: File): Promise<string> {
-  const { url } = await put("payment-qr", file, {
-    access: "public",
-    token: env.BLOB_READ_WRITE_TOKEN,
-    addRandomSuffix: false,
+// src/shared/utils/viet-qr.ts
+export function buildVietQRUrl(params: VietQRParams): string {
+  const { bankCode, bankAccount, bankAccountName, amount, addInfo } = params
+  const base = `https://img.vietqr.io/image/${bankCode}-${bankAccount}-compact2.png`
+  const query = new URLSearchParams({
+    amount: String(amount),
+    addInfo,
+    accountName: bankAccountName,
   })
-  return `${url}?t=${Date.now()}`  // cache-bust
+  return `${base}?${query.toString()}`
 }
 ```
 
-### Why `?t=timestamp` on the URL
+The `<img src={vietQRUrl}>` tag fetches the rendered QR image directly from VietQR's CDN. The server is never involved.
 
-Browsers aggressively cache images by URL. Since the filename never changes, without cache-busting the browser would show the old QR image after an upload. Appending the upload timestamp forces a fresh fetch.
+### Why client-side
+
+The VietQR image URL fully encodes all parameters — amount, account number, transfer description. There is nothing for the server to do. This also means no file storage is needed — previously Vercel Blob was used for a static QR image, but that approach required admin to manually upload a new image whenever the QR changed. Dynamic generation is simpler and always up to date.
+
+### addInfo format and diacritics removal
+
+```
+RDL - {removeDiacritics(employeeName)} chuyen tien an trua
+```
+
+Example: `"Hoàng Đỗ"` → `"RDL - Vu Ngoc Anh chuyen tien an trua"`
+
+Diacritics are stripped because many Vietnamese bank apps reject transfer descriptions containing Unicode diacritics. The removal uses NFD normalization + combining mark strip + explicit `đ/Đ` replacement (these do not decompose under NFD):
+
+```ts
+// src/shared/utils/text.ts
+export function removeDiacritics(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+}
+```
+
+### QR debounce
+
+The Finance tab top-up form debounces the amount input 400ms before updating the QR `<img src>`. Without debouncing, every keystroke would fire a new request to VietQR CDN (e.g. typing "150000" = 6 requests; only the last one is needed).
+
+### Bank account config
+
+Admin configures the office bank account once via F4 App Settings. The config is stored in `AppConfig` as three fields: `bankCode` (VietQR BIN), `bankAccount`, `bankAccountName`. These are fetched by the Finance tab on load and passed into `buildVietQRUrl()`.
 
 ---
 
@@ -243,7 +275,7 @@ Vercel injects `Authorization: Bearer {CRON_SECRET}` on every cron request. The 
 
 ### Idempotency
 
-The cron handler checks for a published menu and unpaid orders before posting to Slack. Running it twice (e.g. if Vercel retries) would post a duplicate message, but this is acceptable given the low stakes of the reminder.
+The cron handler checks for a published menu and employees with negative balance before posting to Slack. Running it twice (e.g. if Vercel retries) would post a duplicate message, but this is acceptable given the low stakes of the reminder.
 
 ---
 
@@ -276,7 +308,6 @@ export const queryKeys = {
   orders: {
     today: () => ["orders", "today"] as const,
     byEmployee: (employeeId: string, date: string) => ["orders", employeeId, date] as const,
-    unpaid: (employeeId: string) => ["orders", "unpaid", employeeId] as const,
   },
   // ...
 }
@@ -284,17 +315,29 @@ export const queryKeys = {
 
 ---
 
-## Payment Design — No Payment Entity
+## Payment Design — Ledger System
 
-### Why `isPaid` on `Order` instead of a separate `Payment` model
+### Why a ledger instead of `isPaid` on Order
 
-A separate `Payment` model would imply tracking individual payment transactions — when each was made, by which method, etc. For this use case:
+The original design had `isPaid: boolean` + `paidAt: DateTime?` on `Order`. This was replaced with a ledger system for several reasons:
 
-- Employees pay all at once via bank transfer
-- Admin confirms or undoes payment per employee per day
-- No partial payments, no payment methods, no transaction IDs
+- `isPaid` only tracked whether a specific order was paid — it could not represent the office's actual payment model, where employees top up their balance in advance or in bulk
+- There was no way to represent a pre-payment, a partial payment, or an admin correction
+- The ledger system (`LedgerEntry`) records every financial event as an immutable entry. Balance = `SUM(amount)` for all entries belonging to an employee
+- Admin can correct mistakes via an `adjustment` entry without editing history
 
-`isPaid: boolean` + `paidAt: DateTime?` directly on `Order` is sufficient and keeps the schema simple. Bulk payment = `updateMany` on all unpaid orders for an employee.
+### Entry types
+
+| Type | Trigger | Amount |
+|---|---|---|
+| `topup` | Member self-reports a bank transfer | Positive |
+| `order_debit` | Order created (same DB transaction as the Order) | Negative |
+| `order_debit` deleted | Order cancelled (same DB transaction) | — |
+| `adjustment` | Admin sets a specific target balance | Signed delta |
+
+### Atomic order + debit
+
+Creating or cancelling an Order always writes or removes the corresponding `LedgerEntry` in the same Prisma transaction. It is never valid to have an Order without its `order_debit` entry.
 
 ---
 

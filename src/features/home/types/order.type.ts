@@ -14,10 +14,3 @@ export const orderItemSchema = z.object({
 
 export type OrderItem = z.infer<typeof orderItemSchema>;
 
-export const appConfigSchema = z.object({
-  id: z.string(),
-  qrCodeUrl: z.string().nullable(),
-  updatedAt: z.string().nullable(),
-});
-
-export type AppConfigData = z.infer<typeof appConfigSchema>;

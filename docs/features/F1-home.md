@@ -12,7 +12,7 @@ Single page with three concerns:
 
 1. **Name selection** — first visit only; subsequent visits skip straight to the order form
 2. **Order tab** — view today's menu (standard dishes + external dish links), place/edit/cancel orders
-3. **Finance tab** — view balance, top up, view transaction history
+3. **Finance tab** — view balance, top up via dynamic QR, view transaction history
 
 Auto order toggle lives as a small persistent setting below the tabs.
 
@@ -121,16 +121,28 @@ See `docs/features/F6-finance.md` for full Finance tab spec. Summary:
 
 #### Balance Card
 
-Shows current balance. Negative balance shows a warning. QR code shown for bank transfer reference.
+Shows current balance. Negative balance shows a warning.
 
 #### Top-up Form
 
 ```
-Số tiền đã chuyển khoản: [___________] đ
-[Xác nhận nạp tiền]
+Số tiền muốn nạp: [___________] đ
+
+← nhập số tiền → QR hiện ra ngay bên dưới (debounced 400ms) →
+
+[QR code — 200×200px]
+Nội dung: RDL - Vu Ngoc Anh chuyen tien an trua
+1234567890 — MB Bank — VU NGOC ANH
+
+[Xác nhận đã chuyển khoản]
 ```
 
-Member enters the amount they've already transferred → `POST /api/finance/topup` → balance updates immediately.
+- Member enters the amount they want to top up
+- QR code appears automatically as member types — generated client-side via `buildVietQRUrl()` using `AppConfig` bank fields
+- `addInfo` is auto-generated: `RDL - {removeDiacritics(employeeName)} chuyen tien an trua`
+- If bank not configured in `AppConfig` → show `"Admin chưa cài đặt tài khoản ngân hàng"` instead of QR
+- Member scans QR → bank app auto-fills account, amount, and transfer description → completes transfer
+- Member clicks "Xác nhận đã chuyển khoản" → `POST /api/finance/topup` → balance updates immediately
 
 #### Transaction History
 
@@ -164,14 +176,16 @@ Always visible below the tabs, regardless of which tab is active.
 - [ ] US8: Employee sees read-only view with locked banner when admin has locked orders
 - [ ] US9: Employee sees their current balance in the header and on the Finance tab label
 - [ ] US10: Employee with negative balance sees a warning
-- [ ] US11: Employee can submit a top-up amount — balance updates immediately
-- [ ] US12: Employee can view their full transaction history
-- [ ] US13: Employee can toggle auto order on/off — persisted immediately
-- [ ] US14: Employee can switch to a different name via "Đổi tên"
-- [x] US15: Employee sees external dish links when any are available for today
-- [x] US16: Clicking an external dish link opens the delivery platform in a new tab
-- [x] US17: External dish links remain visible and clickable when orders are locked
-- [x] US18: On an external-dishes-only day, employee sees only external dish links
+- [ ] US11: Employee enters top-up amount — QR code appears automatically with correct bank info and transfer description
+- [ ] US12: Employee scans QR with bank app — account, amount, and transfer description are auto-filled
+- [ ] US13: Employee clicks "Xác nhận đã chuyển khoản" — balance updates immediately
+- [ ] US14: Employee can view their full transaction history
+- [ ] US15: Employee can toggle auto order on/off — persisted immediately
+- [ ] US16: Employee can switch to a different name via "Đổi tên"
+- [x] US17: Employee sees external dish links when any are available for today
+- [x] US18: Clicking an external dish link opens the delivery platform in a new tab
+- [x] US19: External dish links remain visible and clickable when orders are locked
+- [x] US20: On an external-dishes-only day, employee sees only external dish links
 
 ---
 
@@ -184,6 +198,7 @@ Always visible below the tabs, regardless of which tab is active.
 | Load today's orders | GET | `/api/orders?employeeId=&date=` | — |
 | Load balance | GET | `/api/finance/balance?employeeId=` | — |
 | Load ledger history | GET | `/api/finance/ledger?employeeId=` | — |
+| Load app config (for QR) | GET | `/api/config` | — |
 | Place order | POST | `/api/orders` | `{ employeeId, menuOfDayItemId, quantity }` |
 | Edit order | PATCH | `/api/orders/[id]` | `{ menuOfDayItemId?, quantity? }` |
 | Cancel order | DELETE | `/api/orders/[id]` | — |
@@ -251,7 +266,9 @@ All server state (menu, orders, employees, balance) managed by TanStack Query.
 
 - **Polling:** `use-today-menu` and `use-today-orders` refetch every 30s
 - **Balance polling:** `use-my-balance` does NOT need to poll — it invalidates on top-up mutation and on order place/cancel/edit mutations
-- **QR code:** if `AppConfig.qrCodeUrl` is null, hide the QR section entirely
+- **QR code:** generated client-side via `buildVietQRUrl()` from `src/shared/utils/viet-qr.ts`; requires `AppConfig.bankCode`, `bankAccount`, `bankAccountName` to be set; if any field is null → show "Admin chưa cài đặt tài khoản ngân hàng" instead of QR
+- **QR debounce:** 400ms after last keystroke before QR updates — prevents spamming VietQR CDN
+- **addInfo:** `RDL - {removeDiacritics(employeeName)} chuyen tien an trua` — diacritics stripped via `removeDiacritics()` from `src/shared/utils/text.ts`
 - **Price formatting:** `{n.toLocaleString("vi-VN")}đ` (e.g. `45.000đ`)
 - **Date display:** `dd/MM/yyyy` format throughout
 - **Balance in tab label:** loading state shows `"Tài chính"` without amount until query resolves

@@ -4,9 +4,6 @@ export const env = {
   // Database
   DATABASE_URL: process.env.DATABASE_URL ?? '',
 
-  // Vercel Blob
-  BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN ?? '',
-
   // Slack
   SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ?? '',
   SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL ?? '',

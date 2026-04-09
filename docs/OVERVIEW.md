@@ -11,7 +11,7 @@
 
 **Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
-**Platform:** Web (mobile-first). Hosted on Vercel + Prisma Postgres + Vercel Blob.
+**Platform:** Web (mobile-first). Hosted on Vercel + Prisma Postgres.
 
 ---
 
@@ -38,7 +38,7 @@ MenuOfDay       — the daily menu created by admin; lifecycle: draft → publis
 MenuOfDayItem   — a meal portion on a specific day (name + price + sideDishes stored directly)
 Order           — one meal portion ordered by one employee on one day
 LedgerEntry     — a financial transaction: top-up, order debit, or admin adjustment
-AppConfig       — singleton row; holds global settings (QR code URL)
+AppConfig       — singleton row; holds bank account info for VietQR payment generation
 ```
 
 `MenuOfDay` also carries an `externalDishes` JSON column — a list of off-menu delivery links
@@ -63,6 +63,7 @@ MenuOfDayItem ──< Order              one meal portion → chosen by many ord
 - Each Order has `quantity >= 1`
 - **No `isPaid` / `paidAt` on Order** — payment state is replaced by the ledger system
 - `AppConfig` always has exactly one row (`id = "singleton"`) — always upsert, never insert
+- `AppConfig` holds `bankCode` (VietQR BIN), `bankAccount`, `bankAccountName` — used to generate QR codes client-side; no file storage
 - `MenuOfDayItem` is unique by `(menuOfDayId, name)` — one dish name per day per menu
 - `MenuOfDay.externalDishes` is a JSON array `[{ name, orderUrl }]` — no separate table, no order/payment tracking
 - A menu can be published with only external dishes and no standard items — valid for external-order-only days
@@ -114,6 +115,7 @@ Full transition logic → `docs/domains/menu.md`
 - **External dishes** — admin can attach off-menu delivery links to today's menu; stored as JSON array on `MenuOfDay.externalDishes`; display-only — no order or payment tracking
 - **Lunch fund** — employees maintain a balance by topping up via bank transfer (self-reported); each order automatically debits their balance; admin manages corrections and monitors total fund → details in `docs/domains/ledger.md`
 - **Negative balance allowed** — employees can order even when balance is zero or negative; system shows warning prominently but never blocks ordering
+- **VietQR** — payment QR codes are generated client-side from `AppConfig` bank fields; no file storage; `addInfo` format: `RDL - {name without diacritics} chuyen tien an trua`
 - **Menu editing is store-first** — all edits happen in Zustand store; DB writes only on explicit publish or "Lưu thay đổi" → details in `docs/domains/menu.md`
 - **Autocomplete from history** — dish name suggestions come from historical `MenuOfDayItem` records → `GET /api/menu/suggestions`
 - **Identity** — no auth; employee selects name on first visit, saved to `localStorage`
@@ -149,7 +151,7 @@ Details + message templates → `docs/domains/order.md`, `src/features/slack-not
 |---|---|---|---|
 | F2 | Admin Dashboard | `/admin` | Daily overview: orders placed, meal summary, balance quick-view |
 | F3 | Menu Management | `/admin/menu` | Create/edit daily menu, external dish links, publish, lock |
-| F4 | App Settings | `/admin/settings` | Upload QR code image, manage AppConfig |
+| F4 | App Settings | `/admin/settings` | Configure bank account (for VietQR generation), manage AppConfig |
 | F5 | Employee Management | `/admin/employees` | CRUD employees, set role, email, slackId, autoOrder |
 | F6 | Finance Management | `/admin/finance` | Fund overview, per-employee balances, adjustments, top-up on behalf |
 | F7 | Slack Notifications | events + cron | Publish trigger + 13:00 balance reminder |
@@ -160,8 +162,8 @@ Details + message templates → `docs/domains/order.md`, `src/features/slack-not
 
 ```
 # Config
-GET    /api/config                        — Get AppConfig (qrCodeUrl)
-POST   /api/config/qr                     — Upload new QR image to Vercel Blob, update AppConfig
+GET    /api/config                        — Get AppConfig (bankCode, bankAccount, bankAccountName)
+POST   /api/config/bank                   — Save bank account info, update AppConfig
 
 # Employees
 GET    /api/employees                     — List active employees
@@ -190,6 +192,7 @@ GET    /api/finance/ledger?employeeId=    — Full ledger history for one employ
 GET    /api/finance/summary               — All employee balances + total fund balance (admin)
 POST   /api/finance/topup                 — Add top-up entry { employeeId, amount, createdBy? }
 POST   /api/finance/adjust                — Admin sets target balance { employeeId, targetBalance, note?, adminEmployeeId }
+GET    /api/finance/fund-ledger?month=    — Fund timeline for a month (admin)
 
 # Cron
 POST   /api/cron/remind-payment           — Post balance reminder to Slack (runs at 13:00)
@@ -233,8 +236,10 @@ src/
     ├── services/api.ts
     ├── lib/
     │   ├── prisma.ts
-    │   ├── slack.ts
-    │   └── blob.ts
+    │   └── slack.ts
+    ├── utils/
+    │   ├── viet-qr.ts                    → buildVietQRUrl()
+    │   └── text.ts                       → removeDiacritics()
     ├── constants/query-keys.ts
     └── providers/
 ```
@@ -247,7 +252,7 @@ src/
 |---|---|---|
 | Vercel | Next.js hosting + Cron Jobs | Free |
 | Prisma Postgres | PostgreSQL database (via Prisma Accelerate) | Free |
-| Vercel Blob | QR code image (`payment-qr`) | Free |
+| VietQR CDN | Payment QR code image generation (client-side, no account needed) | Free |
 | Slack Incoming Webhook | Channel posts | Free |
 | Slack Bot API | Direct messages (`chat.postMessage`) | Free |
 
@@ -257,13 +262,14 @@ src/
 
 ```env
 DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=..."
-BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 SLACK_BOT_TOKEN="xoxb-..."
 SLACK_WEBHOOK_URL="https://hooks.slack.com/services/..."
 NEXT_PUBLIC_APP_URL="https://datcom.company.com"
 TZ="Asia/Ho_Chi_Minh"
 CRON_SECRET="random-secret-string"
 ```
+
+Note: `BLOB_READ_WRITE_TOKEN` has been **removed** — Vercel Blob is no longer used. Bank account info is stored in the DB (`AppConfig`); QR codes are generated client-side via VietQR.
 
 ---
 

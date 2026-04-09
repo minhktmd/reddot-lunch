@@ -1,6 +1,7 @@
 'use client';
 
-import { useAppConfig } from '@/features/home/hooks/use-app-config';
+import { useAppConfig } from '@/features/app-settings';
+import { useEmployees } from '@/domains/employee';
 
 import { useMyBalance } from '../hooks/use-my-balance';
 import { useMyLedger } from '../hooks/use-my-ledger';
@@ -18,13 +19,17 @@ export function FinanceTab({ employeeId }: FinanceTabProps) {
   const { data: balanceData, isLoading: balanceLoading } = useMyBalance(employeeId);
   const { data: entries = [], isLoading: ledgerLoading } = useMyLedger(employeeId);
   const { data: appConfig } = useAppConfig();
+  const { data: employees } = useEmployees();
   const topupMutation = useTopup(employeeId);
+
+  const employeeName = employees?.find((e) => e.id === employeeId)?.name ?? '';
 
   return (
     <div className="space-y-6">
       <FinanceBalanceCard balance={balanceData?.balance ?? 0} isLoading={balanceLoading} />
       <FinanceTopupForm
-        qrCodeUrl={appConfig?.qrCodeUrl ?? null}
+        config={appConfig ?? null}
+        employeeName={employeeName}
         onTopup={(amount) => topupMutation.mutate(amount)}
         isLoading={topupMutation.isPending}
       />

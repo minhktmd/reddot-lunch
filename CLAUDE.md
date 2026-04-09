@@ -6,7 +6,7 @@
 
 **Dat Com RDL** — A web app for managing daily lunch orders in an office of ~30–50 people. Replaces a Google Sheets workflow. No authentication — users identify themselves by selecting their name from a dropdown stored in `localStorage`.
 
-> ⚠️ **Infrastructure constraint:** The app runs on **Prisma Postgres (via Prisma Accelerate)** for the database and **Vercel Blob** for file storage. Key rules:
+> ⚠️ **Infrastructure constraint:** The app runs on **Prisma Postgres (via Prisma Accelerate)** for the database. Key rules:
 > - **Never trigger an API call per user action in menu editing** — buffer all changes in the Zustand store and batch into a single request on explicit save/publish
 > - **Prefer batch operations** over sequential requests anywhere in the codebase
 > - When in doubt: fewer round-trips is always better
@@ -29,7 +29,7 @@
 | HTTP Client     | `shared/services/api.ts` — custom fetch wrapper |
 | ORM             | Prisma                                          |
 | Database        | Prisma Postgres (via Prisma Accelerate)         |
-| File Storage    | Vercel Blob (QR code image)                     |
+| QR Code         | VietQR public API (client-side, no account)     |
 | Slack           | Incoming Webhook + `chat.postMessage`           |
 | Scheduling      | Vercel Cron Jobs                                |
 | Package Manager | pnpm                                            |
@@ -93,7 +93,7 @@ src/
 │   │   └── templates/          → AppShell, AdminLayout...
 │   ├── constants/              → App-wide constants + query-keys.ts
 │   ├── hooks/                  → Cross-feature hooks (useDebounce, useMediaQuery...)
-│   ├── lib/                    → Wrappers: cn, logger, prisma, slack, blob
+│   ├── lib/                    → Wrappers: cn, logger, prisma, slack
 │   ├── services/               → Base HTTP service (api.ts)
 │   ├── stores/                 → Global Zustand stores (if any)
 │   ├── utils/                  → Pure functions (format, parse, transform...)
@@ -424,9 +424,11 @@ generator client {
 }
 
 model AppConfig {
-  id        String   @id @default("singleton")
-  qrCodeUrl String?
-  updatedAt DateTime @updatedAt
+  id              String   @id @default("singleton")
+  bankCode        String?  // VietQR BIN code, e.g. "970422" for MB
+  bankAccount     String?  // bank account number
+  bankAccountName String?  // account holder name, ALL CAPS no diacritics, e.g. "VU NGOC ANH"
+  updatedAt       DateTime @updatedAt
 
   @@map("app_config")
 }

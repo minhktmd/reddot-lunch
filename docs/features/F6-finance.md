@@ -45,19 +45,33 @@ Vui lòng nạp tiền sớm nhé!   ← only shown when balance < 0
 ```
 Nạp tiền vào quỹ
 ──────────────────────────────────
-Số tiền đã chuyển khoản:
+Số tiền muốn nạp:
 [___________________] đ
 
-QR code: [QR image if AppConfig.qrCodeUrl is set]
+← khi nhập số tiền → QR hiện ra bên dưới →
 
-[Xác nhận nạp tiền]
+[QR code — 200×200px]
+Nội dung: RDL - Vu Ngoc Anh chuyen tien an trua
+1234567890 — MB Bank — VU NGOC ANH
+
+[Xác nhận đã chuyển khoản]
 ──────────────────────────────────
 ```
 
-- Amount input: integer VND, min 1000, no max
-- On submit: `POST /api/finance/topup` with `{ employeeId, amount }`
-- Balance card updates immediately after success (invalidate query)
-- QR code shown so member can transfer before or after submitting
+**Behavior:**
+
+- Amount input: positive integer VND, min 1000, no max
+- QR code appears only when `amount > 0` AND bank info is configured in `AppConfig`
+- QR updates as member types — debounced 400ms to avoid spamming VietQR CDN
+- If `AppConfig.bankCode` is null → show message `"Admin chưa cài đặt tài khoản ngân hàng"` instead of QR
+- `addInfo` is auto-generated — not editable by member:
+  `RDL - {removeDiacritics(employeeName)} chuyen tien an trua`
+  e.g. `"RDL - Vu Ngoc Anh chuyen tien an trua"`
+- Below the QR: show bank account info as text (account number, bank short name, account name) so member can also transfer manually
+- QR is a plain `<img src={vietQRUrl}>` — generated client-side via `buildVietQRUrl()`, no server call
+- On submit ("Xác nhận đã chuyển khoản"): `POST /api/finance/topup` with `{ employeeId, amount }`
+- Balance card updates immediately after success (invalidate `balance` query)
+- Toast: `"Đã ghi nhận nạp {amount}đ vào quỹ"`
 
 #### Transaction History
 
@@ -75,7 +89,7 @@ Lịch sử giao dịch
 
 - Newest first
 - `topup` entries: label `"Nạp tiền"`, amount green with `+`
-- `order_debit` entries: label `"Đặt cơm · {note}"` (note = date string), amount red with `-`
+- `order_debit` entries: label `"Đặt cơm"`, amount red with `-`
 - `adjustment` entries: label `"Điều chỉnh số dư"`, amount green/red depending on sign
 - No pagination for now — show all (history is typically short, ~30–50 entries per person)
 
@@ -86,14 +100,12 @@ Lịch sử giao dịch
 Route: `/admin/finance`
 
 The admin finance page has **two tabs**:
-1. **Thành viên** — per-employee balances, adjustments (existing spec below)
+1. **Thành viên** — per-employee balances, adjustments
 2. **Lịch sử quỹ** — full fund timeline: every top-up and every lunch day's cost
 
 ---
 
 ### Tab: Thành viên
-
-### Screen: Fund Overview + Member Balances
 
 #### Fund Summary Bar
 
@@ -162,11 +174,10 @@ Same format as member view. `adjustment` entries show note in parentheses.
 
 #### Admin Top-up on Behalf
 
-Admin can also add a top-up for any member directly from the adjustment sheet or a separate "Nạp hộ" button. Uses the same `POST /api/finance/topup` endpoint with `createdBy = adminEmployeeId`.
+Admin can add a top-up for any member directly from the balance table via a "Nạp hộ" button.
+Uses the same `POST /api/finance/topup` endpoint with `createdBy = adminEmployeeId`.
 
 This is how admin records cash handed directly to them (member didn't self-report).
-
----
 
 ---
 
@@ -200,9 +211,9 @@ Lịch sử quỹ ăn trưa
 | Top-up | `{employee name} nạp` | Green `+` | No |
 | Adjustment | `Điều chỉnh: {employee name}` + note | Green/red | No |
 
-**Lunch day row amount** = `SUM(order.quantity × menuOfDayItem.price)` across all orders that day. This is the total cost drawn from the fund that day.
+**Lunch day row amount** = `SUM(order.quantity × menuOfDayItem.price)` across all orders that day.
 
-**Top-up and adjustment rows** are individual `LedgerEntry` records with `type = "topup"` or `type = "adjustment"`. Multiple top-ups on the same day are shown as separate rows.
+**Top-up and adjustment rows** are individual `LedgerEntry` records — multiple top-ups on the same day appear as separate rows.
 
 ---
 
@@ -228,26 +239,22 @@ Clicking [▶ Chi tiết] on a lunch day row expands it inline:
 04/04/2026  Nguyễn Văn A nạp               +100.000đ
 ```
 
-The detail panel shows orders **grouped by dish name**, summed quantity, with subtotal per dish. This is the same data as the kitchen summary box but for historical reference.
-
-- Dishes sorted by quantity desc (highest first)
+- Dishes sorted by quantity desc
 - Footer: total portions + total amount
 - Clicking [▼ Ẩn] collapses the detail panel
 
-**Note:** The detail data comes from live `Order` records joined with `MenuOfDayItem`. If orders are cancelled after the fact, the detail will reflect the current state. The top-level row amount is also live-computed.
+**Note:** Detail data comes from live `Order` records joined with `MenuOfDayItem`. The top-level row amount is also live-computed. If orders are cancelled after the fact, both the detail and the total reflect the current state.
 
 ---
 
 #### Filtering
-
-Simple month filter above the timeline:
 
 ```
 [◀] Tháng 4, 2026 [▶]
 ```
 
 - Defaults to current month
-- Filters all rows (both lunch days and top-ups) to that calendar month
+- Filters all rows (lunch days + top-ups + adjustments) to that calendar month
 - On change: refetch `GET /api/finance/fund-ledger?month=YYYY-MM`
 
 ---
@@ -257,19 +264,21 @@ Simple month filter above the timeline:
 ### Member (Finance Tab on `/`)
 - [ ] US1: Member sees their current balance on the Finance tab label (green or red)
 - [ ] US2: Member sees a negative balance warning when they owe money
-- [ ] US3: Member can submit a top-up amount — balance updates immediately
-- [ ] US4: Member sees the QR code to know where to transfer
-- [ ] US5: Member sees full transaction history (top-ups, order debits, adjustments)
+- [ ] US3: Member enters a top-up amount — QR code appears immediately (debounced)
+- [ ] US4: Member scans the QR code — bank app auto-fills account, amount, and transfer description
+- [ ] US5: Member clicks "Xác nhận đã chuyển khoản" — balance updates immediately
+- [ ] US6: Member sees full transaction history (top-ups, order debits, adjustments)
+- [ ] US7: If bank not configured, member sees a message instead of QR
 
 ### Admin (`/admin/finance`)
-- [ ] US6: Admin sees total fund balance (positive = surplus, negative = deficit)
-- [ ] US7: Admin sees all active employees with their current balance, sorted by most negative first
-- [ ] US8: Admin can adjust any employee's balance to a specific target value
-- [ ] US9: Admin can view full transaction history for any employee
-- [ ] US10: Admin can add a top-up on behalf of any employee
-- [ ] US11: Admin sees the fund timeline (Lịch sử quỹ tab) with top-ups and lunch days
-- [ ] US12: Admin can expand a lunch day row to see dish-level breakdown
-- [ ] US13: Admin can filter the fund timeline by month
+- [ ] US8: Admin sees total fund balance (positive = surplus, negative = deficit)
+- [ ] US9: Admin sees all active employees with their current balance, sorted by most negative first
+- [ ] US10: Admin can adjust any employee's balance to a specific target value
+- [ ] US11: Admin can view full transaction history for any employee
+- [ ] US12: Admin can add a top-up on behalf of any employee
+- [ ] US13: Admin sees the fund timeline (Lịch sử quỹ tab) with top-ups and lunch days
+- [ ] US14: Admin can expand a lunch day row to see dish-level breakdown
+- [ ] US15: Admin can filter the fund timeline by month
 
 ---
 
@@ -281,15 +290,16 @@ Simple month filter above the timeline:
 | Get my ledger history | GET | `/api/finance/ledger?employeeId=` | — |
 | Top up | POST | `/api/finance/topup` | `{ employeeId, amount, createdBy? }` |
 | Get all balances (admin) | GET | `/api/finance/summary` | — |
-| Adjust balance (admin) | POST | `/api/finance/adjust` | `{ employeeId, targetBalance, note? }` |
+| Adjust balance (admin) | POST | `/api/finance/adjust` | `{ employeeId, targetBalance, note?, adminEmployeeId }` |
 | Get fund timeline (admin) | GET | `/api/finance/fund-ledger?month=YYYY-MM` | — |
+| Get app config (for QR) | GET | `/api/config` | — |
 
 ### POST /api/finance/topup
 
 ```ts
 type TopupInput = {
   employeeId: string
-  amount: number    // positive integer VND, min 1000
+  amount: number      // positive integer VND, min 1000
   createdBy?: string  // if absent, defaults to employeeId (self top-up)
 }
 ```
@@ -303,7 +313,7 @@ type AdjustInput = {
   employeeId: string
   targetBalance: number  // desired resulting balance (can be any signed integer)
   note?: string
-  adminEmployeeId: string  // who is making the adjustment
+  adminEmployeeId: string
 }
 ```
 
@@ -311,16 +321,13 @@ Returns updated `BalanceResponse`.
 
 ### GET /api/finance/fund-ledger?month=YYYY-MM
 
-Returns a unified timeline for the requested month, sorted by date desc (newest first). Each item is either a lunch day summary or an individual ledger entry (top-up / adjustment).
-
 ```ts
 type FundLedgerItem =
   | {
       type: "lunch_day"
       date: string            // "YYYY-MM-DD"
       totalAmount: number     // negative integer — total cost for the day
-      orderCount: number      // total portions ordered
-      // Expanded detail — always included in response (client controls expand state)
+      orderCount: number
       dishes: {
         name: string
         quantity: number
@@ -330,24 +337,24 @@ type FundLedgerItem =
     }
   | {
       type: "topup" | "adjustment"
-      date: string            // "YYYY-MM-DD"
-      amount: number          // signed integer
-      employeeName: string    // name of the employee this entry belongs to
+      date: string
+      amount: number
+      employeeName: string
       note: string | null
     }
 
 type FundLedgerResponse = {
-  month: string              // "YYYY-MM"
+  month: string   // "YYYY-MM"
   items: FundLedgerItem[]
 }
 ```
 
 **Server logic:**
 1. Query all `LedgerEntry` records where `type IN ("topup", "adjustment")` within the month → each becomes a `topup`/`adjustment` item
-2. Query all `MenuOfDay` records within the month that have at least one `Order` → each becomes a `lunch_day` item, with orders grouped by dish name
+2. Query all `MenuOfDay` records within the month that have at least one `Order` → each becomes a `lunch_day` item with orders grouped by dish name
 3. Merge and sort by date desc
 
-**Important:** `lunch_day` amounts are computed from live `Order` + `MenuOfDayItem` records, **not** from `order_debit` ledger entries. This ensures the display reflects current order state (e.g. after cancellations). The `order_debit` ledger entries exist for per-employee balance tracking only.
+**Important:** `lunch_day` amounts are computed from live `Order` + `MenuOfDayItem` records, not from `order_debit` entries. `order_debit` entries exist for per-employee balance tracking only.
 
 ---
 
@@ -358,7 +365,8 @@ features/finance/
 ├── components/
 │   ├── finance-tab.tsx                  — Finance tab content (member view)
 │   ├── finance-balance-card.tsx         — Balance display with negative warning
-│   ├── finance-topup-form.tsx           — Amount input + QR code + submit button
+│   ├── finance-topup-form.tsx           — Amount input + dynamic QR + submit button
+│   ├── finance-qr-display.tsx           — QR <img> + bank info text + "not configured" fallback
 │   ├── finance-history-list.tsx         — Transaction list (member + admin per-employee sheet)
 │   ├── finance-summary-bar.tsx          — Fund total for admin page
 │   ├── finance-member-table.tsx         — All employees balance table
@@ -385,14 +393,14 @@ features/finance/
 
 ## Balance Display on Home Page (Outside Finance Tab)
 
-The balance (or debt) is shown **outside the tab** in the main header area of Screen 2, so members always see it without switching tabs:
+Shown outside the tab in the main header area so members always see it:
 
 ```
 Hoàng Đỗ  [Đổi tên]          Số dư: 45.000đ   ← green
 Hiếu      [Đổi tên]          Nợ: 45.000đ      ← red
 ```
 
-This uses the same `use-my-balance` hook. No additional API call — reuse existing query cache.
+Uses the same `use-my-balance` hook. No additional API call — reuse existing query cache.
 
 ---
 
@@ -401,7 +409,9 @@ This uses the same `use-my-balance` hook. No additional API call — reuse exist
 - **No approval for top-ups** — immediate, self-service; admin corrects via adjustment if wrong
 - **Negative balance is allowed** — show warning, never block ordering
 - **`order_debit` entries are written in the same transaction as the Order** — see `docs/domains/ledger.md`
-- **QR code** — same `AppConfig.qrCodeUrl` used in the old payment tab; no new config needed
+- **QR is dynamic, client-side** — built via `buildVietQRUrl()` from `src/shared/utils/viet-qr.ts`; no file storage; requires `AppConfig.bankCode`, `bankAccount`, `bankAccountName` to be set
+- **addInfo format** — `RDL - {removeDiacritics(employeeName)} chuyen tien an trua`; diacritics removed via `removeDiacritics()` from `src/shared/utils/text.ts` because many Vietnamese bank apps reject transfer descriptions with diacritics
+- **QR debounce** — 400ms after last keystroke before updating `<img src>`; prevents spamming VietQR CDN on every keypress
 - **Amount formatting** — `{n.toLocaleString("vi-VN")}đ` throughout; prefix `+` for positive, `-` for negative
-- **Tab label** — computed from `use-my-balance` response; shows `"Tài chính · +45.000đ"` or `"Tài chính · -45.000đ"`; loading state shows `"Tài chính"` without amount
+- **Tab label** — `"Tài chính · +45.000đ"` or `"Tài chính · -45.000đ"`; loading state shows `"Tài chính"` without amount
 - **Fund deficit warning** — shown only to admin on `/admin/finance`; not shown to members

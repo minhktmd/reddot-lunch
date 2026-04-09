@@ -9,8 +9,9 @@ const getCachedConfig = unstable_cache(
     const config = await prisma.appConfig.findUnique({ where: { id: 'singleton' } });
 
     return {
-      id: config?.id ?? 'singleton',
-      qrCodeUrl: config?.qrCodeUrl ?? null,
+      bankCode: config?.bankCode ?? null,
+      bankAccount: config?.bankAccount ?? null,
+      bankAccountName: config?.bankAccountName ?? null,
       updatedAt: config?.updatedAt?.toISOString() ?? null,
     };
   },
